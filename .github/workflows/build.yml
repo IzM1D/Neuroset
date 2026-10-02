@@ -1,0 +1,49 @@
+name: Build and test
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet test Neuroset.Core.slnx -c Release --logger trx
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - shell: pwsh
+        run: ./scripts/publish-unpackaged.ps1 -Configuration Release -Runtime win-x64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: neuroset-windows-x64
+          path: artifacts/Release/unpackaged-win-x64
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: dotnet workload install android
+      - run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - shell: pwsh
+        run: ./scripts/publish-android.ps1 -Configuration Release -Runtime android-arm64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: neuroset-android-arm64
+          path: artifacts/Release/android-arm64/*-Signed.apk

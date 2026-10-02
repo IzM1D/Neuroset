@@ -1,0 +1,18 @@
+<UserControl
+    x:Class="Neuroset.App.Controls.GeneratedImageView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:loc="using:Neuroset.App.Localization">
+    <Border Background="{ThemeResource ElevatedSurfaceBrush}" BorderBrush="{ThemeResource BorderBrush}" BorderThickness="1" CornerRadius="16" Padding="10">
+        <StackPanel Spacing="8">
+            <Image x:Name="Preview" MaxHeight="520" Stretch="Uniform" HorizontalAlignment="Stretch"/>
+            <TextBlock x:Name="ErrorText" Visibility="Collapsed" TextWrapping="Wrap" Foreground="{ThemeResource SecondaryTextBrush}"/>
+            <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <TextBlock x:Name="TitleText" FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                <Button x:Name="OpenButton" Grid.Column="1" Click="OnOpenClick" Style="{StaticResource QuietIconButtonStyle}" ToolTipService.ToolTip="{loc:Loc Key='Open image'}" AutomationProperties.Name="{loc:Loc Key='Open image'}"><FontIcon Glyph="&#xE8A7;" FontSize="14"/></Button>
+                <Button x:Name="SaveButton" Grid.Column="2" Click="OnSaveClick" Style="{StaticResource QuietIconButtonStyle}" ToolTipService.ToolTip="{loc:Loc Key='Save image'}" AutomationProperties.Name="{loc:Loc Key='Save image'}"><FontIcon Glyph="&#xE74E;" FontSize="14"/></Button>
+            </Grid>
+        </StackPanel>
+    </Border>
+</UserControl>

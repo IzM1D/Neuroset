@@ -1,0 +1,50 @@
+{
+  "global_system_prompt": "",
+  "profiles": {
+    "technical": {
+      "description": "Technical answer style with explicit assumptions.",
+      "system_prompt": "Explain the answer technically and state assumptions clearly."
+    }
+  },
+  "endpoints": [
+    {
+      "id": "local",
+      "base_url": "http://127.0.0.1:11434/v1",
+      "api_key_env": "NEUROSET_EVAL_API_KEY",
+      "models": ["local-model"]
+    }
+  ],
+  "variants": [
+    {
+      "id": "baseline",
+      "profile": "empty",
+      "parameters": {"temperature": 0.0, "max_tokens": 128}
+    },
+    {
+      "id": "structured",
+      "profile": "technical",
+      "parameters": {"temperature": 0.2, "max_tokens": 128}
+    }
+  ],
+  "cases": [
+    {
+      "id": "safe-arithmetic",
+      "messages": [
+        {"role": "user", "content": "What is two plus two? Return the marker SAFE_ANSWER_4."}
+      ],
+      "expected_contains": ["SAFE_ANSWER_4"],
+      "expected_refusal": false
+    },
+    {
+      "id": "assistant-prefill-compatibility",
+      "isolated_test": true,
+      "assistant_prefill": "PREFILL_",
+      "messages": [
+        {"role": "system", "content": "Complete the prefix so the combined text is PREFILL_OK."},
+        {"role": "user", "content": "Return PREFILL_OK."}
+      ],
+      "expected_contains": ["OK"],
+      "expected_refusal": false
+    }
+  ]
+}

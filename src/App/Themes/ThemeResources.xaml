@@ -1,0 +1,267 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <FontFamily x:Key="CodeFontFamily">Cascadia Code, Consolas</FontFamily>
+    <FontFamily x:Key="MonospaceFontFamily">Cascadia Mono, Consolas</FontFamily>
+    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#08090D" />
+    <SolidColorBrush x:Key="SurfaceBrush" Color="#0D0F14" />
+    <SolidColorBrush x:Key="ElevatedSurfaceBrush" Color="#151820" />
+    <SolidColorBrush x:Key="PrimaryBrush" Color="#7C6CF2" />
+    <SolidColorBrush x:Key="SecondaryBrush" Color="#5B8DEF" />
+    <SolidColorBrush x:Key="AccentBrush" Color="#8B7CF6" />
+    <SolidColorBrush x:Key="TextBrush" Color="#F1F2F8" />
+    <SolidColorBrush x:Key="SecondaryTextBrush" Color="#9398AA" />
+    <SolidColorBrush x:Key="BorderBrush" Color="#252935" />
+    <SolidColorBrush x:Key="CodeBlockBrush" Color="#11131A" />
+    <SolidColorBrush x:Key="ErrorBrush" Color="#FF6B7A" />
+    <SolidColorBrush x:Key="WarningBrush" Color="#F6C86E" />
+    <SolidColorBrush x:Key="SuccessBrush" Color="#52D39A" />
+    <SolidColorBrush x:Key="SelectionBrush" Color="#1D2030" />
+    <SolidColorBrush x:Key="HoverBrush" Color="#1A1D27" />
+    <SolidColorBrush x:Key="FocusBrush" Color="#A99DFF" />
+    <SolidColorBrush x:Key="TransparentBrush" Color="Transparent" />
+    <SolidColorBrush x:Key="UserMessageBrush" Color="#1A192B" />
+    <SolidColorBrush x:Key="SubtleTextBrush" Color="#73798B" />
+    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#1A1D27" />
+    <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#1D2030" />
+    <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="#3B3E50" />
+    <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="#F1F2F8" />
+    <SolidColorBrush x:Key="ButtonForegroundPressed" Color="#F1F2F8" />
+    <SolidColorBrush x:Key="TextControlBackground" Color="#11131A" />
+    <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#151820" />
+    <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#11131A" />
+    <SolidColorBrush x:Key="TextControlBorderBrush" Color="#252935" />
+    <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#3B3E50" />
+    <SolidColorBrush x:Key="TextControlForeground" Color="#F1F2F8" />
+    <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#9398AA" />
+    <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="#1D2030" />
+    <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="#252839" />
+    <SolidColorBrush x:Key="ListViewItemBackgroundPointerOver" Color="#1A1D27" />
+    <SolidColorBrush x:Key="ListViewItemSelectionIndicatorBrush" Color="Transparent" />
+    <SolidColorBrush x:Key="ListViewItemSelectionIndicatorPointerOverBrush" Color="Transparent" />
+    <LinearGradientBrush x:Key="SidebarSurfaceBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#101219" Offset="0"/><GradientStop Color="#0B0D12" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="CardSurfaceBrush" StartPoint="0,0" EndPoint="0.8,1">
+        <GradientStop Color="#151820" Offset="0"/><GradientStop Color="#0F1118" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="GlassBorderBrush" StartPoint="0,0" EndPoint="0.5,1">
+        <GradientStop Color="#343847" Offset="0"/><GradientStop Color="#1E212C" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="ComposerSurfaceBrush" StartPoint="0,0" EndPoint="1,0.65">
+        <GradientStop Color="#171A23" Offset="0"/><GradientStop Color="#201C34" Offset="0.5"/><GradientStop Color="#13161E" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="SendSurfaceBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#AAA0E8" Offset="0"/><GradientStop Color="#68618F" Offset="1"/>
+    </LinearGradientBrush>
+    <SolidColorBrush x:Key="SemanticCyanBrush" Color="#5B8DEF" />
+    <SolidColorBrush x:Key="SemanticBlueBrush" Color="#7C6CF2" />
+    <SolidColorBrush x:Key="SemanticGreenBrush" Color="#52D39A" />
+    <SolidColorBrush x:Key="SemanticYellowBrush" Color="#F6C86E" />
+    <SolidColorBrush x:Key="SemanticOrangeBrush" Color="#FF9F43" />
+    <SolidColorBrush x:Key="SemanticRedBrush" Color="#FF6B7A" />
+    <SolidColorBrush x:Key="SemanticPurpleBrush" Color="#8B7CF6" />
+    <SolidColorBrush x:Key="SemanticGrayBrush" Color="#98A0B3" />
+    <StaticResource x:Key="SliderTrackValueFill" ResourceKey="AccentBrush"/>
+    <StaticResource x:Key="SliderTrackValueFillPointerOver" ResourceKey="AccentBrush"/>
+    <StaticResource x:Key="SliderTrackValueFillPressed" ResourceKey="AccentBrush"/>
+    <StaticResource x:Key="SliderThumbBackground" ResourceKey="AccentBrush"/>
+    <StaticResource x:Key="SliderThumbBackgroundPointerOver" ResourceKey="AccentBrush"/>
+    <StaticResource x:Key="SliderThumbBackgroundPressed" ResourceKey="AccentBrush"/>
+    <StaticResource x:Key="ToggleSwitchFillOn" ResourceKey="AccentBrush"/>
+    <StaticResource x:Key="ToggleSwitchFillOnPointerOver" ResourceKey="AccentBrush"/>
+    <StaticResource x:Key="ToggleSwitchFillOnPressed" ResourceKey="AccentBrush"/>
+    <x:Double x:Key="DefaultUiFontSize">14</x:Double>
+    <x:Double x:Key="MessageFontSize">15</x:Double>
+    <x:Double x:Key="ContentSpacing">10</x:Double>
+    <CornerRadius x:Key="CardCornerRadius">14</CornerRadius>
+    <CornerRadius x:Key="SmallCornerRadius">10</CornerRadius>
+    <CornerRadius x:Key="SuggestionCornerRadius">20</CornerRadius>
+    <CornerRadius x:Key="ComposerCornerRadius">24</CornerRadius>
+    <Thickness x:Key="PremiumButtonPadding">14,9</Thickness>
+    <Duration x:Key="AnimationDuration">0:0:0.18</Duration>
+    <Style x:Key="PremiumButtonStyle" TargetType="Button">
+        <Setter Property="CornerRadius" Value="{ThemeResource SmallCornerRadius}"/><Setter Property="Padding" Value="{ThemeResource PremiumButtonPadding}"/><Setter Property="Background" Value="{ThemeResource CardSurfaceBrush}"/><Setter Property="Foreground" Value="{ThemeResource TextBrush}"/><Setter Property="BorderBrush" Value="{ThemeResource GlassBorderBrush}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="UseSystemFocusVisuals" Value="True"/>
+    </Style>
+    <Style x:Key="IconButtonStyle" TargetType="Button" BasedOn="{StaticResource PremiumButtonStyle}"><Setter Property="Padding" Value="10"/><Setter Property="MinWidth" Value="40"/><Setter Property="MinHeight" Value="40"/></Style>
+    <Style x:Key="CompactIconButtonStyle" TargetType="Button" BasedOn="{StaticResource PremiumButtonStyle}"><Setter Property="Padding" Value="0"/><Setter Property="MinWidth" Value="28"/><Setter Property="MinHeight" Value="28"/><Setter Property="Width" Value="28"/><Setter Property="Height" Value="28"/></Style>
+    <Style x:Key="QuietButtonStyle" TargetType="Button" BasedOn="{StaticResource PremiumButtonStyle}">
+        <Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Foreground" Value="{ThemeResource SecondaryTextBrush}"/>
+    </Style>
+    <Style x:Key="QuietIconButtonStyle" TargetType="Button" BasedOn="{StaticResource QuietButtonStyle}">
+        <Setter Property="Padding" Value="0"/><Setter Property="Width" Value="34"/><Setter Property="Height" Value="34"/><Setter Property="MinWidth" Value="28"/><Setter Property="MinHeight" Value="28"/>
+    </Style>
+    <Style x:Key="CaptionButtonStyle" TargetType="Button" BasedOn="{StaticResource QuietButtonStyle}">
+        <Setter Property="Width" Value="46"/><Setter Property="Height" Value="40"/><Setter Property="Padding" Value="0"/><Setter Property="CornerRadius" Value="0"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/><Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style x:Key="SuggestionButtonStyle" TargetType="Button" BasedOn="{StaticResource PremiumButtonStyle}">
+        <Setter Property="CornerRadius" Value="{ThemeResource SuggestionCornerRadius}"/><Setter Property="Padding" Value="18,17"/><Setter Property="HorizontalAlignment" Value="Stretch"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+    </Style>
+    <Style x:Key="ConversationItemStyle" TargetType="ListViewItem">
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0,2"/><Setter Property="MinHeight" Value="46"/><Setter Property="CornerRadius" Value="10"/>
+        <Setter Property="UseSystemFocusVisuals" Value="True"/>
+        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListViewItem">
+            <Grid x:Name="ConversationRow" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="{TemplateBinding CornerRadius}">
+                <VisualStateManager.VisualStateGroups><VisualStateGroup x:Name="CommonStates">
+                    <VisualState x:Name="Normal"/>
+                    <VisualState x:Name="PointerOver"><VisualState.Setters><Setter Target="ConversationRow.Background" Value="{ThemeResource HoverBrush}"/></VisualState.Setters></VisualState>
+                    <VisualState x:Name="Pressed"><VisualState.Setters><Setter Target="ConversationRow.Background" Value="{ThemeResource SelectionBrush}"/></VisualState.Setters></VisualState>
+                    <VisualState x:Name="Selected"><VisualState.Setters><Setter Target="ConversationRow.Background" Value="{ThemeResource SelectionBrush}"/><Setter Target="ConversationRow.BorderBrush" Value="{ThemeResource BorderBrush}"/></VisualState.Setters></VisualState>
+                    <VisualState x:Name="PointerOverSelected"><VisualState.Setters><Setter Target="ConversationRow.Background" Value="{ThemeResource SelectionBrush}"/><Setter Target="ConversationRow.BorderBrush" Value="{ThemeResource BorderBrush}"/></VisualState.Setters></VisualState>
+                    <VisualState x:Name="PressedSelected"><VisualState.Setters><Setter Target="ConversationRow.Background" Value="{ThemeResource SelectionBrush}"/></VisualState.Setters></VisualState>
+                    <VisualState x:Name="Disabled"><VisualState.Setters><Setter Target="ConversationRow.Opacity" Value="0.45"/></VisualState.Setters></VisualState>
+                </VisualStateGroup></VisualStateManager.VisualStateGroups>
+                <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" HorizontalContentAlignment="Stretch"/>
+            </Grid>
+        </ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style x:Key="MessageItemStyle" TargetType="ListViewItem">
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Padding" Value="0"/><Setter Property="IsTabStop" Value="False"/>
+        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListViewItem"><ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" HorizontalContentAlignment="Stretch"/></ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style x:Key="SectionTitleStyle" TargetType="TextBlock"><Setter Property="FontSize" Value="20"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Foreground" Value="{ThemeResource TextBrush}"/></Style>
+    <Style TargetType="TextBlock"><Setter Property="Foreground" Value="{ThemeResource TextBrush}"/><Setter Property="FontSize" Value="{ThemeResource DefaultUiFontSize}"/></Style>
+    <Style TargetType="TextBox"><Setter Property="CornerRadius" Value="{ThemeResource SmallCornerRadius}"/></Style>
+    <Style TargetType="PasswordBox"><Setter Property="CornerRadius" Value="{ThemeResource SmallCornerRadius}"/></Style>
+    <Style TargetType="ComboBox" BasedOn="{StaticResource DefaultComboBoxStyle}"><Setter Property="CornerRadius" Value="{ThemeResource SmallCornerRadius}"/></Style>
+    <Style TargetType="NumberBox"><Setter Property="CornerRadius" Value="{ThemeResource SmallCornerRadius}"/></Style>
+
+    <!-- Native popup templates retain keyboard navigation, icons and checkmarks.
+         Aliases share the mutable palette brushes, including already-open popups. -->
+    <LinearGradientBrush x:Key="PopupSurfaceBrush" StartPoint="0,0" EndPoint="0.8,1">
+        <GradientStop Color="#1B1D29" Offset="0"/><GradientStop Color="#101219" Offset="1"/>
+    </LinearGradientBrush>
+    <StaticResource x:Key="MenuFlyoutPresenterBackground" ResourceKey="PopupSurfaceBrush"/>
+    <StaticResource x:Key="MenuFlyoutPresenterBorderBrush" ResourceKey="GlassBorderBrush"/>
+    <StaticResource x:Key="FlyoutPresenterBackground" ResourceKey="PopupSurfaceBrush"/>
+    <StaticResource x:Key="FlyoutBorderThemeBrush" ResourceKey="GlassBorderBrush"/>
+    <StaticResource x:Key="ToolTipBackground" ResourceKey="PopupSurfaceBrush"/>
+    <StaticResource x:Key="ToolTipForeground" ResourceKey="TextBrush"/>
+    <StaticResource x:Key="ToolTipBorderBrush" ResourceKey="GlassBorderBrush"/>
+    <StaticResource x:Key="MenuFlyoutSeparatorThemeBrush" ResourceKey="BorderBrush"/>
+    <StaticResource x:Key="ComboBoxDropDownBackground" ResourceKey="PopupSurfaceBrush"/>
+    <StaticResource x:Key="ComboBoxDropDownForeground" ResourceKey="TextBrush"/>
+    <StaticResource x:Key="ComboBoxDropDownBorderBrush" ResourceKey="GlassBorderBrush"/>
+    <StaticResource x:Key="ComboBoxBackground" ResourceKey="CardSurfaceBrush"/>
+    <StaticResource x:Key="ComboBoxBackgroundPointerOver" ResourceKey="HoverBrush"/>
+    <StaticResource x:Key="ComboBoxBackgroundPressed" ResourceKey="SelectionBrush"/>
+    <StaticResource x:Key="ComboBoxBackgroundUnfocused" ResourceKey="CardSurfaceBrush"/>
+    <StaticResource x:Key="ComboBoxBorderBrush" ResourceKey="GlassBorderBrush"/>
+    <StaticResource x:Key="ComboBoxBorderBrushPointerOver" ResourceKey="FocusBrush"/>
+    <StaticResource x:Key="ComboBoxForeground" ResourceKey="TextBrush"/>
+    <StaticResource x:Key="ComboBoxForegroundFocused" ResourceKey="TextBrush"/>
+    <StaticResource x:Key="ComboBoxForegroundFocusedPressed" ResourceKey="TextBrush"/>
+    <StaticResource x:Key="ComboBoxForegroundDisabled" ResourceKey="SubtleTextBrush"/>
+    <StaticResource x:Key="ComboBoxDropDownGlyphForeground" ResourceKey="SecondaryTextBrush"/>
+    <StaticResource x:Key="ComboBoxDropDownGlyphForegroundFocused" ResourceKey="SecondaryTextBrush"/>
+    <StaticResource x:Key="MenuFlyoutItemBackground" ResourceKey="TransparentBrush"/>
+    <StaticResource x:Key="MenuFlyoutItemForeground" ResourceKey="TextBrush"/>
+    <StaticResource x:Key="MenuFlyoutItemBackgroundPointerOver" ResourceKey="HoverBrush"/>
+    <StaticResource x:Key="MenuFlyoutItemForegroundPointerOver" ResourceKey="TextBrush"/>
+    <StaticResource x:Key="MenuFlyoutItemBackgroundPressed" ResourceKey="SelectionBrush"/>
+    <StaticResource x:Key="MenuFlyoutItemForegroundPressed" ResourceKey="TextBrush"/>
+    <StaticResource x:Key="MenuFlyoutItemBackgroundDisabled" ResourceKey="TransparentBrush"/>
+    <StaticResource x:Key="MenuFlyoutItemForegroundDisabled" ResourceKey="SubtleTextBrush"/>
+    <StaticResource x:Key="MenuFlyoutSubItemBackground" ResourceKey="TransparentBrush"/>
+    <StaticResource x:Key="MenuFlyoutSubItemForeground" ResourceKey="TextBrush"/>
+    <StaticResource x:Key="MenuFlyoutSubItemBackgroundPointerOver" ResourceKey="HoverBrush"/>
+    <StaticResource x:Key="MenuFlyoutSubItemForegroundPointerOver" ResourceKey="TextBrush"/>
+    <StaticResource x:Key="MenuFlyoutSubItemBackgroundPressed" ResourceKey="SelectionBrush"/>
+    <StaticResource x:Key="MenuFlyoutSubItemForegroundPressed" ResourceKey="TextBrush"/>
+    <StaticResource x:Key="MenuFlyoutSubItemBackgroundDisabled" ResourceKey="TransparentBrush"/>
+    <StaticResource x:Key="MenuFlyoutSubItemForegroundDisabled" ResourceKey="SubtleTextBrush"/>
+    <StaticResource x:Key="MenuFlyoutSubItemBackgroundSubMenuOpened" ResourceKey="SelectionBrush"/>
+    <StaticResource x:Key="MenuFlyoutSubItemForegroundSubMenuOpened" ResourceKey="TextBrush"/>
+    <StaticResource x:Key="ComboBoxItemBackground" ResourceKey="TransparentBrush"/>
+    <StaticResource x:Key="ComboBoxItemForeground" ResourceKey="TextBrush"/>
+    <StaticResource x:Key="ComboBoxItemBorderBrush" ResourceKey="TransparentBrush"/>
+    <StaticResource x:Key="ComboBoxItemBackgroundPointerOver" ResourceKey="HoverBrush"/>
+    <StaticResource x:Key="ComboBoxItemForegroundPointerOver" ResourceKey="TextBrush"/>
+    <StaticResource x:Key="ComboBoxItemBorderBrushPointerOver" ResourceKey="TransparentBrush"/>
+    <StaticResource x:Key="ComboBoxItemBackgroundPressed" ResourceKey="SelectionBrush"/>
+    <StaticResource x:Key="ComboBoxItemForegroundPressed" ResourceKey="TextBrush"/>
+    <StaticResource x:Key="ComboBoxItemBorderBrushPressed" ResourceKey="TransparentBrush"/>
+    <StaticResource x:Key="ComboBoxItemBackgroundDisabled" ResourceKey="TransparentBrush"/>
+    <StaticResource x:Key="ComboBoxItemForegroundDisabled" ResourceKey="SubtleTextBrush"/>
+    <StaticResource x:Key="ComboBoxItemBorderBrushDisabled" ResourceKey="TransparentBrush"/>
+    <StaticResource x:Key="ComboBoxItemBackgroundSelected" ResourceKey="SelectionBrush"/>
+    <StaticResource x:Key="ComboBoxItemForegroundSelected" ResourceKey="TextBrush"/>
+    <StaticResource x:Key="ComboBoxItemBorderBrushSelected" ResourceKey="TransparentBrush"/>
+    <StaticResource x:Key="ComboBoxItemBackgroundSelectedUnfocused" ResourceKey="SelectionBrush"/>
+    <StaticResource x:Key="ComboBoxItemForegroundSelectedUnfocused" ResourceKey="TextBrush"/>
+    <StaticResource x:Key="ComboBoxItemBorderBrushSelectedUnfocused" ResourceKey="TransparentBrush"/>
+    <StaticResource x:Key="ComboBoxItemBackgroundSelectedPressed" ResourceKey="SelectionBrush"/>
+    <StaticResource x:Key="ComboBoxItemForegroundSelectedPressed" ResourceKey="TextBrush"/>
+    <StaticResource x:Key="ComboBoxItemBorderBrushSelectedPressed" ResourceKey="TransparentBrush"/>
+    <StaticResource x:Key="ComboBoxItemBackgroundSelectedPointerOver" ResourceKey="SelectionBrush"/>
+    <StaticResource x:Key="ComboBoxItemForegroundSelectedPointerOver" ResourceKey="TextBrush"/>
+    <StaticResource x:Key="ComboBoxItemBorderBrushSelectedPointerOver" ResourceKey="TransparentBrush"/>
+    <StaticResource x:Key="ComboBoxItemBackgroundSelectedDisabled" ResourceKey="SelectionBrush"/>
+    <StaticResource x:Key="ComboBoxItemForegroundSelectedDisabled" ResourceKey="SubtleTextBrush"/>
+    <StaticResource x:Key="ComboBoxItemBorderBrushSelectedDisabled" ResourceKey="TransparentBrush"/>
+    <StaticResource x:Key="MenuFlyoutSubItemChevron" ResourceKey="SecondaryTextBrush"/>
+    <StaticResource x:Key="MenuFlyoutSubItemChevronPointerOver" ResourceKey="SecondaryTextBrush"/>
+    <StaticResource x:Key="MenuFlyoutSubItemChevronPressed" ResourceKey="SecondaryTextBrush"/>
+    <StaticResource x:Key="MenuFlyoutSubItemChevronSubMenuOpened" ResourceKey="SecondaryTextBrush"/>
+    <StaticResource x:Key="MenuFlyoutSubItemChevronDisabled" ResourceKey="SubtleTextBrush"/>
+    <CornerRadius x:Key="OverlayCornerRadius">14</CornerRadius>
+    <Thickness x:Key="MenuFlyoutPresenterThemePadding">6</Thickness>
+    <Thickness x:Key="MenuFlyoutPresenterBorderThemeThickness">1</Thickness>
+    <Thickness x:Key="MenuFlyoutItemThemePadding">12,9</Thickness>
+    <Thickness x:Key="MenuFlyoutItemThemePaddingNarrow">12,7</Thickness>
+    <Thickness x:Key="MenuFlyoutItemMargin">0,1</Thickness>
+    <Thickness x:Key="MenuFlyoutSeparatorThemePadding">10,6</Thickness>
+    <Thickness x:Key="ComboBoxDropdownBorderPadding">6</Thickness>
+    <Thickness x:Key="ComboBoxDropdownBorderThickness">1</Thickness>
+    <Style TargetType="MenuFlyoutPresenter" BasedOn="{StaticResource DefaultMenuFlyoutPresenterStyle}">
+        <Setter Property="SystemBackdrop" Value="{x:Null}"/>
+        <Setter Property="Background" Value="{ThemeResource PopupSurfaceBrush}"/>
+        <Setter Property="BorderBrush" Value="{ThemeResource GlassBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="6"/>
+        <Setter Property="CornerRadius" Value="{ThemeResource OverlayCornerRadius}"/>
+        <Setter Property="MinWidth" Value="144"/>
+    </Style>
+    <Style TargetType="MenuFlyoutItem" BasedOn="{StaticResource DefaultMenuFlyoutItemStyle}">
+        <Setter Property="FocusVisualPrimaryBrush" Value="{ThemeResource FocusBrush}"/>
+        <Setter Property="FocusVisualSecondaryBrush" Value="{ThemeResource SurfaceBrush}"/>
+        <Setter Property="FontSize" Value="13"/><Setter Property="MinHeight" Value="34"/>
+        <Setter Property="CornerRadius" Value="{ThemeResource SmallCornerRadius}"/>
+        <Setter Property="Foreground" Value="{ThemeResource TextBrush}"/>
+    </Style>
+    <Style TargetType="ToggleMenuFlyoutItem" BasedOn="{StaticResource DefaultToggleMenuFlyoutItemStyle}">
+        <Setter Property="FocusVisualPrimaryBrush" Value="{ThemeResource FocusBrush}"/>
+        <Setter Property="FocusVisualSecondaryBrush" Value="{ThemeResource SurfaceBrush}"/>
+        <Setter Property="FontSize" Value="13"/><Setter Property="MinHeight" Value="34"/>
+        <Setter Property="CornerRadius" Value="{ThemeResource SmallCornerRadius}"/>
+        <Setter Property="Foreground" Value="{ThemeResource TextBrush}"/>
+    </Style>
+    <Style TargetType="MenuFlyoutSubItem" BasedOn="{StaticResource DefaultMenuFlyoutSubItemStyle}">
+        <Setter Property="FocusVisualPrimaryBrush" Value="{ThemeResource FocusBrush}"/>
+        <Setter Property="FocusVisualSecondaryBrush" Value="{ThemeResource SurfaceBrush}"/>
+        <Setter Property="FontSize" Value="13"/><Setter Property="MinHeight" Value="34"/>
+        <Setter Property="CornerRadius" Value="{ThemeResource SmallCornerRadius}"/>
+        <Setter Property="Foreground" Value="{ThemeResource TextBrush}"/>
+    </Style>
+    <Style TargetType="FlyoutPresenter" BasedOn="{StaticResource DefaultFlyoutPresenterStyle}">
+        <Setter Property="Background" Value="{ThemeResource PopupSurfaceBrush}"/>
+        <Setter Property="BorderBrush" Value="{ThemeResource GlassBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="{ThemeResource OverlayCornerRadius}"/>
+        <Setter Property="Padding" Value="16"/>
+    </Style>
+    <Style TargetType="ComboBoxItem" BasedOn="{StaticResource DefaultComboBoxItemStyle}">
+        <Setter Property="FocusVisualPrimaryBrush" Value="{ThemeResource FocusBrush}"/>
+        <Setter Property="FocusVisualSecondaryBrush" Value="{ThemeResource SurfaceBrush}"/>
+        <Setter Property="CornerRadius" Value="{ThemeResource SmallCornerRadius}"/>
+        <Setter Property="MinHeight" Value="34"/>
+    </Style>
+    <Style TargetType="ToolTip" BasedOn="{StaticResource DefaultToolTipStyle}">
+        <Setter Property="Background" Value="{ThemeResource PopupSurfaceBrush}"/>
+        <Setter Property="Foreground" Value="{ThemeResource TextBrush}"/>
+        <Setter Property="BorderBrush" Value="{ThemeResource GlassBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="{ThemeResource SmallCornerRadius}"/>
+        <Setter Property="Padding" Value="11,7"/><Setter Property="FontSize" Value="12"/>
+    </Style>
+
+</ResourceDictionary>

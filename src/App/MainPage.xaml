@@ -1,0 +1,281 @@
+<Page x:Class="Neuroset.App.MainPage" x:Name="RootPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:controls="using:Neuroset.App.Controls" xmlns:converters="using:Neuroset.App.Converters" xmlns:views="using:Neuroset.App.Views" xmlns:loc="using:Neuroset.App.Localization" xmlns:services="using:Neuroset.App.Services" mc:Ignorable="d" AllowDrop="True" DragOver="OnDragOver" Drop="OnDrop" KeyDown="OnPageKeyDown" SizeChanged="OnPageSizeChanged">
+    <Page.Resources>
+        <converters:BooleanToVisibilityConverter x:Key="BoolVisibility"/>
+        <converters:InverseBooleanToVisibilityConverter x:Key="InverseBoolVisibility"/>
+        <converters:InverseBooleanConverter x:Key="InverseBool"/>
+        <converters:RoleToBrushConverter x:Key="RoleBrush"/>
+        <converters:RoleToBorderBrushConverter x:Key="RoleBorderBrush"/>
+        <converters:RoleToAlignmentConverter x:Key="RoleAlignment"/>
+        <converters:ConversationDateConverter x:Key="ConversationDate"/>
+        <converters:EmptyCountToVisibilityConverter x:Key="EmptyCountVisibility"/>
+    </Page.Resources>
+    <Grid x:Name="ShellGrid" Background="{ThemeResource AppBackgroundBrush}">
+        <Grid x:Name="AmbientBackdrop" IsHitTestVisible="False" AutomationProperties.AccessibilityView="Raw"/>
+        <Grid x:Name="MainWorkspace" Visibility="{x:Bind ViewModel.IsSettingsOpen,Mode=OneWay,Converter={StaticResource InverseBoolVisibility}}">
+        <Grid.ColumnDefinitions><ColumnDefinition x:Name="SidebarColumn" Width="280"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+        <Border x:Name="SidebarScrim" Grid.ColumnSpan="2" Canvas.ZIndex="10" Background="#80000000" Visibility="Collapsed" Tapped="OnDismissSidebar"/>
+        <Border x:Name="SidebarPanel" Background="{ThemeResource SidebarSurfaceBrush}" BorderBrush="{ThemeResource BorderBrush}" BorderThickness="0,0,1,0">
+            <Grid x:Name="SidebarContent" Padding="18,50,18,16" RowSpacing="14">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                <Grid Margin="3,2,0,14">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <Button Click="OnHomeClick" Style="{StaticResource QuietButtonStyle}" Padding="0" HorizontalAlignment="Left" AutomationProperties.Name="{loc:Loc Key='Home'}">
+                        <StackPanel Orientation="Horizontal" Spacing="11">
+                            <Viewbox Width="25" Height="25"><Path Data="M 16,0 C 18,11 21,14 32,16 C 21,18 18,21 16,32 C 14,21 11,18 0,16 C 11,14 14,11 16,0 Z"><Path.Fill><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#A6D9FF" Offset="0"/><GradientStop Color="#7F8CF7" Offset="1"/></LinearGradientBrush></Path.Fill></Path></Viewbox>
+                            <TextBlock Text="Neuroset" FontSize="21" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Grid.Column="1" Click="OnToggleSidebar" Style="{StaticResource QuietIconButtonStyle}" ToolTipService.ToolTip="{loc:Loc Key='Hide sidebar'}" AutomationProperties.Name="{loc:Loc Key='Hide sidebar'}"><FontIcon Glyph="&#xE700;" FontSize="15"/></Button>
+                </Grid>
+                <AutoSuggestBox x:Name="SearchBox" Grid.Row="1" IsEnabled="{x:Bind ViewModel.IsGenerating,Mode=OneWay,Converter={StaticResource InverseBool}}" PlaceholderText="{loc:Loc Key='Search conversations'}" QueryIcon="Find" TextChanged="OnSearchTextChanged" CornerRadius="10" BorderThickness="0" Background="{ThemeResource ElevatedSurfaceBrush}" AutomationProperties.Name="{loc:Loc Key='Search conversations'}"/>
+                <Grid Grid.Row="2" ColumnSpacing="5">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <Button Click="OnNewChatClick" IsEnabled="{x:Bind ViewModel.IsGenerating,Mode=OneWay,Converter={StaticResource InverseBool}}" Style="{StaticResource PremiumButtonStyle}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="12,10" AutomationProperties.Name="{loc:Loc Key='New chat'}">
+                        <StackPanel Orientation="Horizontal" Spacing="10"><FontIcon Glyph="&#xE710;" FontSize="15"/><TextBlock Text="{loc:Loc Key='New chat'}" FontSize="13"/></StackPanel>
+                    </Button>
+                    <Button Grid.Column="1" Click="OnNewChatModeClick" IsEnabled="{x:Bind ViewModel.IsGenerating,Mode=OneWay,Converter={StaticResource InverseBool}}" Style="{StaticResource QuietIconButtonStyle}" Height="40" ToolTipService.ToolTip="{loc:Loc Key='More chat modes'}" AutomationProperties.Name="{loc:Loc Key='More chat modes'}"><FontIcon Glyph="&#xE70D;" FontSize="11"/></Button>
+                </Grid>
+                <Grid Grid.Row="3" RowSpacing="12" Margin="0,9,0,0">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                    <TextBlock Text="{loc:Loc Key='Your conversations'}" FontSize="11" Foreground="{ThemeResource SubtleTextBrush}" Margin="10,0,0,0"/>
+                    <ListView Grid.Row="1" IsEnabled="{x:Bind ViewModel.IsGenerating,Mode=OneWay,Converter={StaticResource InverseBool}}" ItemsSource="{x:Bind ViewModel.Conversations,Mode=OneWay}" SelectedItem="{x:Bind ViewModel.CurrentConversation,Mode=TwoWay}" SelectionMode="Single" ContainerContentChanging="OnConversationContainerContentChanging" ItemContainerStyle="{StaticResource ConversationItemStyle}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListView.ItemTemplate><DataTemplate>
+                            <Grid Padding="10,7,5,7" ColumnSpacing="9">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                <FontIcon Glyph="&#xE8F2;" FontSize="14" Foreground="{ThemeResource SecondaryTextBrush}" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding UpdatedAt,Converter={StaticResource ConversationDate}}" FontSize="10" Foreground="{ThemeResource SubtleTextBrush}" VerticalAlignment="Center"/>
+                                    <FontIcon Glyph="&#xE840;" FontSize="10" Foreground="{ThemeResource AccentBrush}" Visibility="{Binding IsPinned,Converter={StaticResource BoolVisibility}}"/>
+                                    <Button Tag="{Binding}" Style="{StaticResource QuietIconButtonStyle}" Width="24" Height="28" MinWidth="24" ToolTipService.ToolTip="{loc:Loc Key='Chat actions'}" AutomationProperties.Name="{loc:Loc Key='Chat actions'}">
+                                        <FontIcon Glyph="&#xE712;" FontSize="11"/>
+                                        <Button.Flyout><MenuFlyout><MenuFlyoutItem Text="{loc:Loc Key='Chat settings'}" Tag="{Binding}" Click="OnConversationSettings"/><MenuFlyoutSeparator/><MenuFlyoutItem Text="{loc:Loc Key=Rename}" Tag="{Binding}" Click="OnRenameConversation"/><MenuFlyoutItem Text="{loc:Loc Key='Pin / unpin'}" Tag="{Binding}" Click="OnPinConversation"/><MenuFlyoutSeparator/><MenuFlyoutItem Text="{loc:Loc Key=Delete}" Tag="{Binding}" Click="OnDeleteConversation"/></MenuFlyout></Button.Flyout>
+                                    </Button>
+                                </StackPanel>
+                                <Grid.ContextFlyout><MenuFlyout><MenuFlyoutItem Text="{loc:Loc Key='Chat settings'}" Tag="{Binding}" Click="OnConversationSettings"/><MenuFlyoutSeparator/><MenuFlyoutItem Text="{loc:Loc Key=Rename}" Tag="{Binding}" Click="OnRenameConversation"/><MenuFlyoutItem Text="{loc:Loc Key='Pin / unpin'}" Tag="{Binding}" Click="OnPinConversation"/><MenuFlyoutSeparator/><MenuFlyoutItem Text="{loc:Loc Key=Delete}" Tag="{Binding}" Click="OnDeleteConversation"/></MenuFlyout></Grid.ContextFlyout>
+                            </Grid>
+                        </DataTemplate></ListView.ItemTemplate>
+                    </ListView>
+                    <TextBlock Grid.Row="1" Text="{loc:Loc Key='Your conversations will appear here'}" Visibility="{x:Bind ViewModel.Conversations.Count,Mode=OneWay,Converter={StaticResource EmptyCountVisibility}}" Foreground="{ThemeResource SubtleTextBrush}" FontSize="12" TextWrapping="Wrap" Margin="10,10"/>
+                </Grid>
+                <Border Grid.Row="4" BorderBrush="{ThemeResource BorderBrush}" BorderThickness="0,1,0,0" Padding="0,14,0,0">
+                    <Button Command="{x:Bind ViewModel.ToggleSettingsCommand}" Style="{StaticResource QuietButtonStyle}" Padding="8,5" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" AutomationProperties.Name="{loc:Loc Key=Settings}">
+                        <Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <Border Width="34" Height="34" CornerRadius="17" Background="{ThemeResource UserMessageBrush}" BorderBrush="{ThemeResource GlassBorderBrush}" BorderThickness="1"><FontIcon Glyph="&#xE713;" FontSize="16" Foreground="{ThemeResource SecondaryTextBrush}"/></Border>
+                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center"><TextBlock Text="{loc:Loc Key='Your workspace'}" FontSize="12"/><TextBlock Text="{x:Bind ViewModel.StatusText,Mode=OneWay}" FontSize="10" Foreground="{ThemeResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis"/></StackPanel>
+                            <FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="11" Foreground="{ThemeResource SubtleTextBrush}"/>
+                        </Grid>
+                    </Button>
+                </Border>
+            </Grid>
+        </Border>
+        <Grid x:Name="ChatArea" Grid.Column="1" Background="Transparent">
+            <Grid.RowDefinitions><RowDefinition Height="40"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+
+            <Grid Grid.Row="1" Padding="24,4,26,0" MinHeight="44" ColumnSpacing="12">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <Button x:Name="SidebarRevealButton" Click="OnToggleSidebar" Style="{StaticResource QuietIconButtonStyle}" Visibility="Collapsed" ToolTipService.ToolTip="{loc:Loc Key='Show sidebar'}" AutomationProperties.Name="{loc:Loc Key='Show sidebar'}"><FontIcon Glyph="&#xE700;" FontSize="16"/></Button>
+                <Button Grid.Column="1" Click="OnCurrentConversationSettings" Style="{StaticResource QuietButtonStyle}" HorizontalAlignment="Left" Padding="6,4" Visibility="{x:Bind ViewModel.HasConversation,Mode=OneWay,Converter={StaticResource BoolVisibility}}" ToolTipService.ToolTip="{x:Bind ViewModel.CurrentConversationSubtitle,Mode=OneWay}">
+                    <TextBlock Text="{x:Bind ViewModel.CurrentConversationTitle,Mode=OneWay}" Foreground="{ThemeResource SecondaryTextBrush}" FontSize="12" TextTrimming="CharacterEllipsis" MaxWidth="320"/>
+                </Button>
+                <Button x:Name="ModelPickerButton" Grid.Column="2" IsEnabled="{x:Bind ViewModel.IsGenerating,Mode=OneWay,Converter={StaticResource InverseBool}}" Style="{StaticResource QuietButtonStyle}" Padding="9,5" ToolTipService.ToolTip="{loc:Loc Key='Choose model'}" AutomationProperties.Name="{loc:Loc Key='Choose model'}">
+                    <Button.Flyout>
+                        <Flyout x:Name="ModelPickerFlyout" Placement="BottomEdgeAlignedRight" Opened="OnModelPickerOpened">
+                            <StackPanel Width="300" Spacing="10">
+                                <Grid><TextBlock Text="{loc:Loc Key='Choose model'}" FontSize="16" FontWeight="SemiBold"/><Button HorizontalAlignment="Right" Click="OnRefreshModels" Style="{StaticResource QuietIconButtonStyle}" IsEnabled="{x:Bind ViewModel.IsLoadingModels,Mode=OneWay,Converter={StaticResource InverseBool}}" AutomationProperties.Name="{loc:Loc Key='Load models'}" ToolTipService.ToolTip="{loc:Loc Key='Load models'}"><FontIcon Glyph="&#xE72C;" FontSize="14"/></Button></Grid>
+                                <TextBox x:Name="ModelSearch" PlaceholderText="{loc:Loc Key='Search models'}" TextChanged="OnModelSearchChanged" AutomationProperties.Name="{loc:Loc Key='Search models'}"/>
+                                <ProgressBar IsIndeterminate="True" Visibility="{x:Bind ViewModel.IsLoadingModels,Mode=OneWay,Converter={StaticResource BoolVisibility}}"/>
+                                <ListView x:Name="ModelPickerList" MaxHeight="340" ItemsSource="{x:Bind ViewModel.ModelOptions}" SelectedItem="{x:Bind ViewModel.ActiveModel,Mode=OneWay}" SelectionMode="Single" IsItemClickEnabled="True" ItemClick="OnModelItemClick" IsEnabled="{x:Bind ViewModel.IsSwitchingModel,Mode=OneWay,Converter={StaticResource InverseBool}}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="{loc:Loc Key='Available models'}">
+                                    <ListView.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" ToolTipService.ToolTip="{Binding}" FontSize="13" Margin="4,7"/></DataTemplate></ListView.ItemTemplate>
+                                </ListView>
+                                <TextBlock Text="{loc:Loc Key='No matching models'}" Visibility="{x:Bind ViewModel.ModelOptions.Count,Mode=OneWay,Converter={StaticResource EmptyCountVisibility}}" Foreground="{ThemeResource SecondaryTextBrush}" FontSize="12"/>
+                                <TextBlock Text="{x:Bind ViewModel.ModelPickerStatus,Mode=OneWay}" TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource SecondaryTextBrush}"/>
+                                <Button Content="{loc:Loc Key='Connections &amp; models'}" Click="OnManageModels" Style="{StaticResource QuietButtonStyle}" HorizontalAlignment="Stretch"/>
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                    <StackPanel Orientation="Horizontal" Spacing="8"><TextBlock Text="{x:Bind ViewModel.ActiveModel,Mode=OneWay}" Foreground="{ThemeResource SecondaryTextBrush}" FontSize="11" TextTrimming="CharacterEllipsis" MaxWidth="210"/><FontIcon Glyph="&#xE70D;" FontSize="9"/></StackPanel>
+                </Button>
+            </Grid>
+            <Grid Grid.Row="2">
+                <ListView x:Name="MessagesList" ItemsSource="{x:Bind ViewModel.Messages,Mode=OneWay}"  SelectionMode="None" Background="Transparent" HorizontalAlignment="Stretch" Padding="0,20,0,24" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.HorizontalScrollMode="Disabled" ItemContainerStyle="{StaticResource MessageItemStyle}"><ListView.ItemsPanel><ItemsPanelTemplate><ItemsStackPanel ItemsUpdatingScrollMode="KeepLastItemInView"/></ItemsPanelTemplate></ListView.ItemsPanel>
+                    <ListView.ItemTemplate><DataTemplate><Grid MaxWidth="940" HorizontalAlignment="Stretch" Padding="32,0"><Grid HorizontalAlignment="{Binding Role,Converter={StaticResource RoleAlignment}}" MaxWidth="860" Margin="0,0,0,20"><Border Background="{Binding Role,Converter={StaticResource RoleBrush}}" BorderBrush="{Binding Role,Converter={StaticResource RoleBorderBrush}}" BorderThickness="1" CornerRadius="20" Padding="20,16"><StackPanel><Grid ColumnSpacing="6"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding RoleLabel}" FontSize="12" Foreground="{ThemeResource SecondaryTextBrush}" FontWeight="SemiBold" VerticalAlignment="Center"/><TextBlock Grid.Column="1" Text="{Binding TimeLabel}" Foreground="{ThemeResource SecondaryTextBrush}" FontSize="11" VerticalAlignment="Center" Margin="10,0,0,0"/><Button Grid.Column="2" Tag="{Binding}" Style="{StaticResource QuietIconButtonStyle}" ToolTipService.ToolTip="{loc:Loc Key='Message actions'}" AutomationProperties.Name="{loc:Loc Key='Message actions'}"><FontIcon Glyph="&#xE712;" FontSize="12"/><Button.Flyout><MenuFlyout><MenuFlyoutItem Text="{loc:Loc Key=Copy}" Tag="{Binding}" Click="OnCopyMessage"/><MenuFlyoutItem Text="{loc:Loc Key='Edit as new version'}" Tag="{Binding}" Click="OnEditMessage"/><MenuFlyoutItem Text="{loc:Loc Key='Regenerate response'}" Tag="{Binding}" Click="OnRegenerateMessage"/><MenuFlyoutSeparator/><MenuFlyoutItem Text="{loc:Loc Key='Delete message and replies'}" Tag="{Binding}" Click="OnDeleteMessage"/></MenuFlyout></Button.Flyout></Button></Grid><controls:MarkdownView Text="{Binding Content}" Margin="0,8,0,0"/><ItemsControl ItemsSource="{Binding HtmlArtifacts}"><ItemsControl.ItemTemplate><DataTemplate><controls:HtmlArtifactView Title="{Binding Title}" SourcePath="{Binding SourcePath}"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                        <ItemsControl ItemsSource="{Binding Widgets}"><ItemsControl.ItemTemplate><DataTemplate><Border Background="{ThemeResource ElevatedSurfaceBrush}" BorderBrush="{ThemeResource BorderBrush}" BorderThickness="1" CornerRadius="{ThemeResource CardCornerRadius}" Padding="18" Margin="0,2"><Grid RowSpacing="12"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Width="42" Height="42" CornerRadius="12" Background="{ThemeResource SelectionBrush}"><FontIcon Glyph="{Binding Glyph}" Foreground="{ThemeResource AccentBrush}" FontSize="20"/></Border><StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="{Binding Eyebrow}" FontSize="11" Foreground="{ThemeResource AccentBrush}" FontWeight="SemiBold"/><TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap"/></StackPanel></Grid><StackPanel Grid.Row="1" Spacing="2"><TextBlock Text="{Binding Primary}" FontSize="30" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock Text="{Binding Secondary}" Foreground="{ThemeResource SecondaryTextBrush}" TextWrapping="Wrap"/></StackPanel><ItemsControl Grid.Row="2" ItemsSource="{Binding Rows}"><ItemsControl.ItemTemplate><DataTemplate><Grid Padding="0,7" BorderBrush="{ThemeResource BorderBrush}" BorderThickness="0,1,0,0" ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding Label}" Foreground="{ThemeResource SecondaryTextBrush}" TextWrapping="Wrap"/><TextBlock Grid.Column="1" Text="{Binding Value}" FontWeight="SemiBold" TextWrapping="Wrap" MaxWidth="430"/></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl><TextBlock Grid.Row="3" Text="{Binding Footer}" FontSize="10" Foreground="{ThemeResource SecondaryTextBrush}" HorizontalAlignment="Right"/></Grid></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                        <ItemsControl ItemsSource="{Binding GeneratedImages}"><ItemsControl.ItemTemplate><DataTemplate><controls:GeneratedImageView ImageModel="{Binding}" Margin="0,10,0,0"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                        <ItemsControl ItemsSource="{Binding Presentations}"><ItemsControl.ItemTemplate><DataTemplate><controls:PresentationFileView PresentationModel="{Binding}" Margin="0,10,0,0"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                        <ItemsControl ItemsSource="{Binding Tables}"><ItemsControl.ItemTemplate><DataTemplate><controls:RichTableView Table="{Binding}"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                        <ItemsControl ItemsSource="{Binding Canvases}"><ItemsControl.ItemTemplate><DataTemplate><controls:ContentCanvasView ContentModel="{Binding}"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                        <ItemsControl ItemsSource="{Binding Attachments}"><ItemsControl.ItemTemplate><DataTemplate><Border Background="{ThemeResource HoverBrush}" CornerRadius="8" Padding="9,5" Margin="0,2,6,0" HorizontalAlignment="Left"><StackPanel Orientation="Horizontal" Spacing="6"><FontIcon Glyph="&#xE723;" FontSize="12"/><TextBlock Text="{Binding Name}"/></StackPanel></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                        <StackPanel Visibility="{Binding HasTools,Converter={StaticResource BoolVisibility}}" Margin="0,5,0,1">
+                            <Button Click="OnToolJournalToggle" Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" MinHeight="0" HorizontalAlignment="Left" HorizontalContentAlignment="Left" AutomationProperties.Name="{Binding ToolJournalHeader}">
+                                <Grid MinHeight="25" ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <FontIcon Glyph="&#xE90F;" FontSize="15" Foreground="{ThemeResource SecondaryTextBrush}" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="ToolJournalLabel" Grid.Column="1" Text="{Binding ToolJournalHeader}" FontSize="13" Foreground="{ThemeResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Loaded="OnToolJournalLabelLoaded" Unloaded="OnToolJournalLabelUnloaded"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding ToolJournalCompactStatus}" FontSize="11" Foreground="{ThemeResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="180" VerticalAlignment="Center"/>
+                                    <FontIcon Grid.Column="3" Glyph="&#xE70D;" FontSize="10" Foreground="{ThemeResource SecondaryTextBrush}" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+                            <StackPanel Visibility="{Binding IsToolJournalExpanded,Converter={StaticResource BoolVisibility}}" Margin="18,5,0,0">
+                                <StackPanel Visibility="{Binding HasAgentRunDetails,Converter={StaticResource BoolVisibility}}" Spacing="3" Margin="4,0,0,7">
+                                    <TextBlock Text="{Binding RequestedActionsSummary}" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                    <TextBlock Text="{Binding RequestedActionTypesSummary}" FontSize="11" Foreground="{ThemeResource SecondaryTextBrush}" TextWrapping="Wrap"/>
+                                    <ItemsControl ItemsSource="{Binding PlannedActions}" Visibility="{Binding HasPlannedActions,Converter={StaticResource BoolVisibility}}" Margin="0,2,0,1">
+                                        <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding DisplayText}" FontSize="11" Foreground="{ThemeResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="8,1,0,0"/></DataTemplate></ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock Text="{Binding GenerationTimingSummary}" FontSize="11" Foreground="{ThemeResource AccentBrush}" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            <ItemsControl ItemsSource="{Binding ToolGroups}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,1,0,2">
+                                            <Button Click="OnToolGroupToggle" Background="Transparent" BorderThickness="0" Padding="4,3" MinHeight="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" AutomationProperties.Name="{Binding DisplayName}">
+                                                <Grid ColumnSpacing="8">
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                    <FontIcon Glyph="{Binding Glyph}" FontSize="14" Foreground="{ThemeResource SecondaryTextBrush}" VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="2" Text="{Binding CountLabel}" FontSize="11" Foreground="{ThemeResource SecondaryTextBrush}" VerticalAlignment="Center"/>
+                                                    <FontIcon Grid.Column="3" Glyph="&#xE70D;" FontSize="9" Foreground="{ThemeResource SecondaryTextBrush}" VerticalAlignment="Center"/>
+                                                </Grid>
+                                            </Button>
+                                            <ItemsControl ItemsSource="{Binding Activities}" Visibility="{Binding IsExpanded,Converter={StaticResource BoolVisibility}}" Margin="18,1,0,2">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Button Click="OnToolActivityOpenReport" Background="Transparent" BorderThickness="0" Padding="4,3" MinHeight="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" AutomationProperties.Name="{Binding HeaderText}">
+                                                            <Grid ColumnSpacing="8">
+                                                                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                                <FontIcon Glyph="{Binding Glyph}" FontSize="12" Foreground="{ThemeResource SecondaryTextBrush}" VerticalAlignment="Center"/>
+                                                                <TextBlock x:Name="ToolActivityLabel" Grid.Column="1" Text="{Binding HeaderText}" FontSize="12" Foreground="{ThemeResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Loaded="OnToolActivityLabelLoaded" Unloaded="OnToolActivityLabelUnloaded"/>
+                                                                <TextBlock Grid.Column="2" Text="{Binding Status}" FontSize="10" Foreground="{ThemeResource SecondaryTextBrush}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                                            </Grid>
+                                                        </Button>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,4,0,0" Visibility="{Binding HasVersions,Converter={StaticResource BoolVisibility}}"><Button Tag="{Binding}" Click="OnPreviousMessageVersion" IsEnabled="{Binding HasPreviousVersion}" Style="{StaticResource QuietIconButtonStyle}" AutomationProperties.Name="{loc:Loc Key='Previous message version'}"><FontIcon Glyph="&#xE76B;" FontSize="11"/></Button><TextBlock Text="{Binding VersionPosition}" VerticalAlignment="Center" FontSize="11" Foreground="{ThemeResource SecondaryTextBrush}"/><TextBlock Text="/" VerticalAlignment="Center" FontSize="11" Foreground="{ThemeResource SecondaryTextBrush}"/><TextBlock Text="{Binding VersionCount}" VerticalAlignment="Center" FontSize="11" Foreground="{ThemeResource SecondaryTextBrush}"/><Button Tag="{Binding}" Click="OnNextMessageVersion" IsEnabled="{Binding HasNextVersion}" Style="{StaticResource QuietIconButtonStyle}" AutomationProperties.Name="{loc:Loc Key='Next message version'}"><FontIcon Glyph="&#xE76C;" FontSize="11"/></Button></StackPanel>
+                    </StackPanel><Border.ContextFlyout><MenuFlyout><MenuFlyoutItem Text="{loc:Loc Key=Copy}" Tag="{Binding}" Click="OnCopyMessage"/><MenuFlyoutItem Text="{loc:Loc Key='Edit as new version'}" Tag="{Binding}" Click="OnEditMessage"/><MenuFlyoutItem Text="{loc:Loc Key='Regenerate response'}" Tag="{Binding}" Click="OnRegenerateMessage"/><MenuFlyoutSeparator/><MenuFlyoutItem Text="{loc:Loc Key='Delete message and replies'}" Tag="{Binding}" Click="OnDeleteMessage"/></MenuFlyout></Border.ContextFlyout></Border></Grid></Grid></DataTemplate></ListView.ItemTemplate>
+                </ListView>
+                <ScrollViewer x:Name="WelcomeScroller" Background="Transparent" SizeChanged="OnWelcomeViewportChanged" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" HorizontalContentAlignment="Stretch" Visibility="{x:Bind ViewModel.Messages.Count,Mode=OneWay,Converter={StaticResource EmptyCountVisibility}}">
+                    <Grid x:Name="WelcomeViewport">
+                    <StackPanel x:Name="WelcomeContent" MaxWidth="600" Margin="32,8,32,32" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Grid x:Name="OrbInteraction" HorizontalAlignment="Center" IsHitTestVisible="False" AutomationProperties.AccessibilityView="Raw">
+                            <Grid x:Name="OrbFloat">
+                                <Grid x:Name="OrbRotation">
+                                    <Grid x:Name="WelcomeOrb" Width="260" Height="226" IsHitTestVisible="False"/>
+                                </Grid>
+                            </Grid>
+                        </Grid>
+                        <TextBlock x:Name="WelcomeTitle" Text="{loc:Loc Key='Hello. What is on your mind?'}" FontSize="34" FontWeight="Light" TextAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                        <TextBlock Text="{loc:Loc Key='Ask a question, share an idea, or simply start a conversation.'}" Foreground="{ThemeResource SecondaryTextBrush}" FontSize="15" LineHeight="24" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="440" HorizontalAlignment="Center"/>
+                        <Grid x:Name="SuggestionGrid" ColumnSpacing="16" RowSpacing="14" Margin="0,32,0,0">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                            <Button x:Name="IdeasCard" Grid.Row="0" Grid.Column="0" Tag="Brainstorm a few original ideas for a project about " Click="OnSuggestionClick" Style="{StaticResource SuggestionButtonStyle}" AutomationProperties.Name="{loc:Loc Key='Brainstorm ideas'}">
+                                <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <Border Width="40" Height="40" CornerRadius="20" Background="#1C1731"><FontIcon Glyph="" FontSize="19" Foreground="#AC9AFF"/></Border>
+                                    <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center"><TextBlock Text="{loc:Loc Key='Brainstorm ideas'}" FontSize="13"/><TextBlock Text="{loc:Loc Key='for your next project'}" FontSize="11" Foreground="{ThemeResource SecondaryTextBrush}" TextWrapping="Wrap"/></StackPanel>
+                                    <FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="12" Foreground="{ThemeResource SubtleTextBrush}"/>
+                                </Grid>
+                            </Button>
+                            <Button x:Name="ExplainCard" Grid.Row="0" Grid.Column="1" Tag="Explain this in simple words, with an example: " Click="OnSuggestionClick" Style="{StaticResource SuggestionButtonStyle}" AutomationProperties.Name="{loc:Loc Key='Explain something'}">
+                                <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <Border Width="40" Height="40" CornerRadius="20" Background="#12252A"><FontIcon Glyph="" FontSize="19" Foreground="#89DBE4"/></Border>
+                                    <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center"><TextBlock Text="{loc:Loc Key='Explain something'}" FontSize="13"/><TextBlock Text="{loc:Loc Key='in simple words'}" FontSize="11" Foreground="{ThemeResource SecondaryTextBrush}" TextWrapping="Wrap"/></StackPanel>
+                                    <FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="12" Foreground="{ThemeResource SubtleTextBrush}"/>
+                                </Grid>
+                            </Button>
+                            <Button x:Name="WriteCard" Grid.Row="1" Grid.Column="0" Tag="Help me write a text about " Click="OnSuggestionClick" Style="{StaticResource SuggestionButtonStyle}" AutomationProperties.Name="{loc:Loc Key='Write a text'}">
+                                <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <Border Width="40" Height="40" CornerRadius="20" Background="#142821"><FontIcon Glyph="" FontSize="19" Foreground="#8FE0C4"/></Border>
+                                    <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center"><TextBlock Text="{loc:Loc Key='Write a text'}" FontSize="13"/><TextBlock Text="{loc:Loc Key='find the right words'}" FontSize="11" Foreground="{ThemeResource SecondaryTextBrush}" TextWrapping="Wrap"/></StackPanel>
+                                    <FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="12" Foreground="{ThemeResource SubtleTextBrush}"/>
+                                </Grid>
+                            </Button>
+                            <Button x:Name="CodeCard" Grid.Row="1" Grid.Column="1" Tag="Help me understand and improve this code: " Click="OnSuggestionClick" Style="{StaticResource SuggestionButtonStyle}" AutomationProperties.Name="{loc:Loc Key='Help with code'}">
+                                <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <Border Width="40" Height="40" CornerRadius="20" Background="#2A201C"><FontIcon Glyph="" FontSize="19" Foreground="#EDBC99"/></Border>
+                                    <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center"><TextBlock Text="{loc:Loc Key='Help with code'}" FontSize="13"/><TextBlock Text="{loc:Loc Key='from an idea to a solution'}" FontSize="11" Foreground="{ThemeResource SecondaryTextBrush}" TextWrapping="Wrap"/></StackPanel>
+                                    <FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="12" Foreground="{ThemeResource SubtleTextBrush}"/>
+                                </Grid>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+            </Grid>
+            <StackPanel x:Name="ComposerArea" Grid.Row="3" MaxWidth="768" HorizontalAlignment="Stretch" Padding="32,8,32,24" Spacing="8">
+                <Border Visibility="{x:Bind ViewModel.IsRoleplayConversation,Mode=OneWay,Converter={StaticResource BoolVisibility}}" Background="{ThemeResource ElevatedSurfaceBrush}" BorderBrush="{ThemeResource BorderBrush}" BorderThickness="1" CornerRadius="9" Padding="10,6"><Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"><FontIcon Glyph="&#xE8B7;" Foreground="{ThemeResource AccentBrush}"/><TextBlock Text="{x:Bind ViewModel.RoleplayTurnText,Mode=OneWay}" VerticalAlignment="Center"/></StackPanel><Button Grid.Column="1" Content="{x:Bind ViewModel.RoleplayPauseButtonText,Mode=OneWay}" Command="{x:Bind ViewModel.ToggleRoleplayPauseCommand}" IsEnabled="{x:Bind ViewModel.IsGenerating,Mode=OneWay,Converter={StaticResource InverseBool}}" Style="{StaticResource PremiumButtonStyle}" Padding="12,4"/></Grid></Border>
+                <InfoBar IsOpen="{x:Bind ViewModel.HasError,Mode=OneWay}" Severity="Error" Message="{x:Bind ViewModel.ErrorMessage,Mode=OneWay}" IsClosable="True"/>
+                <Border Visibility="{x:Bind ViewModel.IsEditingMessage,Mode=OneWay,Converter={StaticResource BoolVisibility}}" Background="{ThemeResource SelectionBrush}" CornerRadius="9" Padding="10,6"><Grid><StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE70F;"/><TextBlock Text="{x:Bind ViewModel.EditingMessageDescription,Mode=OneWay}"/></StackPanel><Button HorizontalAlignment="Right" Content="{loc:Loc Key=Cancel}" Command="{x:Bind ViewModel.CancelEditCommand}" Style="{StaticResource PremiumButtonStyle}" Padding="10,3"/></Grid></Border>
+                <ItemsControl ItemsSource="{x:Bind ViewModel.PendingAttachments,Mode=OneWay}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate><DataTemplate><Border Background="{ThemeResource ElevatedSurfaceBrush}" BorderBrush="{ThemeResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="9,4" Margin="0,0,6,0"><StackPanel Orientation="Horizontal" Spacing="7"><TextBlock Text="{Binding Name}" VerticalAlignment="Center"/><Button Tag="{Binding}" Click="OnRemovePendingAttachment" Style="{StaticResource IconButtonStyle}" Width="24" Height="24" Padding="0" ToolTipService.ToolTip="{loc:Loc Key='Remove attachment'}"><FontIcon Glyph="&#xE711;" FontSize="10"/></Button></StackPanel></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                <ItemsControl ItemsSource="{x:Bind ViewModel.PastedTextBlocks,Mode=OneWay}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate><DataTemplate><Border Background="{ThemeResource ElevatedSurfaceBrush}" BorderBrush="{ThemeResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="9,4" Margin="0,0,6,0"><StackPanel Orientation="Horizontal" Spacing="7"><FontIcon Glyph="&#xE77F;" FontSize="12" VerticalAlignment="Center"/><TextBlock Text="{Binding Label}" VerticalAlignment="Center"/><Button Tag="{Binding}" Click="OnRemovePastedText" Style="{StaticResource IconButtonStyle}" Width="24" Height="24" Padding="0" ToolTipService.ToolTip="{loc:Loc Key='Remove pasted text'}"><FontIcon Glyph="&#xE711;" FontSize="10"/></Button></StackPanel></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                <Border x:Name="ComposerSurface" Background="Transparent" BorderThickness="0" Padding="10">
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <Button Style="{StaticResource QuietIconButtonStyle}" Background="{ThemeResource CardSurfaceBrush}" CornerRadius="20" Width="40" Height="40" Click="OnAttachClick" IsEnabled="{x:Bind ViewModel.IsGenerating,Mode=OneWay,Converter={StaticResource InverseBool}}" ToolTipService.ToolTip="{loc:Loc Key='Attach files'}" AutomationProperties.Name="{loc:Loc Key='Attach files'}"><FontIcon Glyph="&#xE710;" FontSize="17"/></Button>
+                            <ToggleButton x:Name="ImageGenerationButton" Width="40" Height="40" MinWidth="40" Padding="0" CornerRadius="12" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                Visibility="{x:Bind ViewModel.IsImageGenerationAvailable,Mode=OneWay,Converter={StaticResource BoolVisibility}}"
+                                IsChecked="{x:Bind ViewModel.IsImageGenerationRequested,Mode=TwoWay}"
+                                IsEnabled="{x:Bind ViewModel.CanRequestImageGeneration,Mode=OneWay}"
+                                ToolTipService.ToolTip="{x:Bind ViewModel.ImageGenerationTooltip,Mode=OneWay}"
+                                AutomationProperties.Name="{loc:Loc Key='Generate an image for this message'}">
+                                <ToggleButton.Resources>
+                                    <StaticResource x:Key="ToggleButtonBackground" ResourceKey="CardSurfaceBrush"/>
+                                    <StaticResource x:Key="ToggleButtonBackgroundChecked" ResourceKey="SelectionBrush"/>
+                                    <StaticResource x:Key="ToggleButtonBackgroundCheckedPointerOver" ResourceKey="SelectionBrush"/>
+                                    <StaticResource x:Key="ToggleButtonBorderBrushChecked" ResourceKey="AccentBrush"/>
+                                    <StaticResource x:Key="ToggleButtonForegroundChecked" ResourceKey="AccentBrush"/>
+                                </ToggleButton.Resources>
+                                <Viewbox Width="18" Height="18" Stretch="Uniform">
+                                    <PathIcon Width="24" Height="24" Data="F0 M5,2 L19,2 C20.66,2 22,3.34 22,5 L22,19 C22,20.66 20.66,22 19,22 L5,22 C3.34,22 2,20.66 2,19 L2,5 C2,3.34 3.34,2 5,2 Z M5,4 C4.45,4 4,4.45 4,5 L4,19 C4,19.55 4.45,20 5,20 L19,20 C19.55,20 20,19.55 20,19 L20,5 C20,4.45 19.55,4 19,4 Z M6,17 L10,12 L13,15 L16,11 L19,17 Z M7,7 A1.5,1.5 0 1 0 10,7 A1.5,1.5 0 1 0 7,7 Z"/>
+                                </Viewbox>
+                            </ToggleButton>
+                        </StackPanel>
+                        <TextBox x:Name="Composer" Grid.Column="1" Text="{x:Bind ViewModel.ComposerText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" IsReadOnly="{x:Bind ViewModel.IsGenerating,Mode=OneWay}" PlaceholderText="{loc:Loc Key='Message Neuroset…'}" AcceptsReturn="True" TextWrapping="Wrap" FontSize="15" MinHeight="42" MaxHeight="170" Padding="8,10" VerticalAlignment="Center" BorderThickness="0" Background="Transparent" AutomationProperties.Name="{loc:Loc Key='Message Neuroset…'}" PreviewKeyDown="OnComposerPreviewKeyDown" Paste="OnComposerPaste">
+                            <TextBox.Resources><SolidColorBrush x:Key="TextControlBackground" Color="Transparent"/><SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent"/><SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent"/><SolidColorBrush x:Key="TextControlBorderBrush" Color="Transparent"/><SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="Transparent"/><SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="Transparent"/></TextBox.Resources>
+                        </TextBox>
+                        <Button Grid.Column="3" Click="OnSendClick" Visibility="{x:Bind ViewModel.IsGenerating,Mode=OneWay,Converter={StaticResource InverseBoolVisibility}}" IsEnabled="{x:Bind ViewModel.CanSendMessage,Mode=OneWay}" Style="{StaticResource IconButtonStyle}" Width="42" Height="42" Padding="0" CornerRadius="21" Background="{ThemeResource SendSurfaceBrush}" ToolTipService.ToolTip="{loc:Loc Key='Send (Enter)'}" AutomationProperties.Name="{loc:Loc Key='Send (Enter)'}"><FontIcon Glyph="&#xE74A;" FontSize="18"/></Button>
+                        <Button Grid.Column="3" Command="{x:Bind ViewModel.StopCommand}" Visibility="{x:Bind ViewModel.IsGenerating,Mode=OneWay,Converter={StaticResource BoolVisibility}}" Style="{StaticResource IconButtonStyle}" Background="{ThemeResource ErrorBrush}" Width="42" Height="42" Padding="0" CornerRadius="21" ToolTipService.ToolTip="{loc:Loc Key='Stop generation (Esc)'}" AutomationProperties.Name="{loc:Loc Key='Stop generation (Esc)'}"><FontIcon Glyph="&#xE71A;"/></Button>
+                    </Grid>
+                </Border>
+                <TextBlock x:Name="ComposerHint" Text="{loc:Loc Key='Enter to send · Shift+Enter for a new line'}" FontSize="10" Foreground="{ThemeResource SecondaryTextBrush}" HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Grid>
+        </Grid>
+        <views:SettingsView x:Name="SettingsOverlay" Grid.ColumnSpan="2" DataContext="{x:Bind ViewModel.Settings,Mode=OneWay}" Visibility="{x:Bind ViewModel.IsSettingsOpen,Mode=OneWay,Converter={StaticResource BoolVisibility}}" CloseRequested="OnSettingsCloseRequested"/>
+        <Grid x:Name="AppDialogOverlay" Grid.ColumnSpan="2" Background="#B8000000" Visibility="Collapsed">
+            <Border x:Name="AppDialogFrame" MaxWidth="780" MaxHeight="760" Margin="36" Padding="24" HorizontalAlignment="Center" VerticalAlignment="Center" Background="{ThemeResource ElevatedSurfaceBrush}" BorderBrush="{ThemeResource BorderBrush}" BorderThickness="1" CornerRadius="{ThemeResource CardCornerRadius}">
+                <Grid RowSpacing="18">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock x:Name="AppDialogTitle" FontSize="23" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap"/><Button Grid.Column="1" Style="{StaticResource CompactIconButtonStyle}" Click="OnAppDialogClose" ToolTipService.ToolTip="{loc:Loc Key=Close}"><FontIcon Glyph="&#xE711;" FontSize="11"/></Button></Grid>
+                    <ScrollViewer Grid.Row="1" MaxHeight="620" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch"><ContentControl x:Name="AppDialogContent" HorizontalContentAlignment="Stretch"/></ScrollViewer>
+                    <StackPanel services:ResponsiveForm.Enabled="True" Grid.Row="2" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right"><Button x:Name="AppDialogCloseButton" Style="{StaticResource PremiumButtonStyle}" Click="OnAppDialogClose"/><Button x:Name="AppDialogSecondaryButton" Style="{StaticResource PremiumButtonStyle}" Click="OnAppDialogSecondary" Visibility="Collapsed"/><Button x:Name="AppDialogPrimaryButton" Style="{StaticResource PremiumButtonStyle}" Background="{ThemeResource AccentBrush}" Click="OnAppDialogPrimary"/></StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+        <Grid x:Name="FirstRunOverlay" Grid.ColumnSpan="2" Background="#B0000000" Visibility="{x:Bind ViewModel.IsFirstRun,Mode=OneWay,Converter={StaticResource BoolVisibility}}">
+            <Border x:Name="FirstRunFrame" Width="620" Background="{ThemeResource ElevatedSurfaceBrush}" BorderBrush="{ThemeResource BorderBrush}" BorderThickness="1" CornerRadius="{ThemeResource CardCornerRadius}" Padding="34" HorizontalAlignment="Center" VerticalAlignment="Center"><ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel Spacing="15"><Border Width="64" Height="64" CornerRadius="{ThemeResource CardCornerRadius}" Background="{ThemeResource SelectionBrush}" HorizontalAlignment="Left"><FontIcon Glyph="&#xE8BD;" FontSize="30" Foreground="{ThemeResource AccentBrush}"/></Border><TextBlock Text="{loc:Loc Key='Welcome to Neuroset'}" FontSize="32" FontWeight="SemiBold"/><TextBlock Text="{loc:Loc Key='Connect any OpenAI-compatible endpoint. The API key is protected by secure device storage and never stored as plaintext in SQLite.'}" TextWrapping="Wrap" Foreground="{ThemeResource SecondaryTextBrush}"/>
+                <TextBox Header="{loc:Loc Key='Connection name'}" Text="{x:Bind ViewModel.Settings.ConnectionName,Mode=TwoWay}"/><TextBox Header="{loc:Loc Key='Base URL'}" Text="{x:Bind ViewModel.Settings.BaseUrl,Mode=TwoWay}"/><PasswordBox Header="{loc:Loc Key='API key'}" Password="{x:Bind ViewModel.Settings.ApiKey,Mode=TwoWay}"/><TextBox Header="{loc:Loc Key=Model}" Text="{x:Bind ViewModel.Settings.Model,Mode=TwoWay}"/>
+                <StackPanel services:ResponsiveForm.Enabled="True" Orientation="Horizontal" Spacing="10"><Button Content="{loc:Loc Key='Test connection'}" Command="{x:Bind ViewModel.Settings.TestConnectionCommand}" Style="{StaticResource PremiumButtonStyle}"/><Button Content="{loc:Loc Key='Start chatting'}" Click="OnCompleteFirstRun" Style="{StaticResource PremiumButtonStyle}" Background="{ThemeResource AccentBrush}"/></StackPanel><TextBlock Text="{x:Bind ViewModel.Settings.ConnectionStatus,Mode=OneWay}" TextWrapping="Wrap" Foreground="{ThemeResource SecondaryTextBrush}"/>
+            </StackPanel></ScrollViewer></Border>
+        </Grid>
+        <Grid x:Name="StartupOverlay" Grid.ColumnSpan="2" Background="{ThemeResource AppBackgroundBrush}">
+            <Border x:Name="StartupFrame" Width="520" Padding="34" HorizontalAlignment="Center" VerticalAlignment="Center" Background="{ThemeResource ElevatedSurfaceBrush}" BorderBrush="{ThemeResource BorderBrush}" BorderThickness="1" CornerRadius="{ThemeResource CardCornerRadius}">
+                <StackPanel Spacing="16">
+                    <ProgressRing x:Name="StartupProgress" Width="38" Height="38" IsActive="True" HorizontalAlignment="Left"/>
+                    <TextBlock Text="{loc:Loc Key='Starting Neuroset'}" FontSize="26" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="StartupStatusText" Text="{loc:Loc Key='Preparing your local workspace…'}" Foreground="{ThemeResource SecondaryTextBrush}" TextWrapping="Wrap"/>
+                    <TextBlock x:Name="StartupErrorText" Visibility="Collapsed" Foreground="{ThemeResource ErrorBrush}" TextWrapping="Wrap" IsTextSelectionEnabled="True"/>
+                    <Button x:Name="StartupRetryButton" Content="{loc:Loc Key='Try again'}" Visibility="Collapsed" Click="OnRetryStartup" Style="{StaticResource PremiumButtonStyle}" HorizontalAlignment="Left"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</Page>

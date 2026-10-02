@@ -1,0 +1,90 @@
+<ContentDialog
+    x:Class="Neuroset.App.Controls.PresentationEditorDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Neuroset.App.Controls"
+    xmlns:loc="using:Neuroset.App.Localization"
+    PrimaryButtonText="{loc:Loc Key='Save changes'}"
+    SecondaryButtonText="{loc:Loc Key='Save presentation'}"
+    CloseButtonText="{loc:Loc Key=Close}"
+    PrimaryButtonClick="OnSaveChanges" SecondaryButtonClick="OnSaveCopy" CloseButtonClick="OnCloseClick"
+    Opened="OnOpened" Closing="OnClosing" Closed="OnClosed" DefaultButton="None">
+    <Grid x:Name="EditorRoot" RowSpacing="12" SizeChanged="OnEditorSizeChanged">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <Grid ColumnSpacing="12" RowSpacing="8">
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <StackPanel VerticalAlignment="Center" Spacing="3">
+                <TextBlock x:Name="VersionText" FontSize="12" Foreground="{ThemeResource SecondaryTextBrush}"/>
+                <TextBlock x:Name="StateText" FontSize="12" TextWrapping="Wrap"/>
+            </StackPanel>
+            <Grid x:Name="HeaderActions" Grid.Column="1" ColumnSpacing="8">
+                <Grid.ColumnDefinitions><ColumnDefinition x:Name="ResetColumn" Width="Auto"/><ColumnDefinition x:Name="ReloadColumn" Width="Auto"/></Grid.ColumnDefinitions>
+                <Button x:Name="ResetButton" Click="OnReset" HorizontalAlignment="Stretch"><TextBlock Text="{loc:Loc Key='Discard edits'}" TextWrapping="Wrap"/></Button>
+                <Button x:Name="ReloadButton" Grid.Column="1" Click="OnReload" HorizontalAlignment="Stretch"><TextBlock x:Name="ReloadText" Text="{loc:Loc Key='Reload latest version'}" TextWrapping="Wrap"/></Button>
+            </Grid>
+        </Grid>
+        <Grid Grid.Row="1" ColumnSpacing="12" RowSpacing="10">
+            <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition x:Name="FieldsRow" Height="0"/></Grid.RowDefinitions>
+            <Grid.ColumnDefinitions><ColumnDefinition x:Name="ThumbnailColumn" Width="150"/><ColumnDefinition Width="*"/><ColumnDefinition x:Name="EditColumn" Width="300"/></Grid.ColumnDefinitions>
+            <ListView x:Name="SlideList" Grid.RowSpan="2" SelectionChanged="OnSlideSelected" SelectionMode="Single" HorizontalContentAlignment="Stretch"
+                      AutomationProperties.Name="{loc:Loc Key='Presentation slides'}">
+                <ListView.ItemContainerStyle><Style TargetType="ListViewItem"><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Padding" Value="4"/></Style></ListView.ItemContainerStyle>
+                <ListView.ItemTemplate><DataTemplate>
+                    <StackPanel Spacing="3" Margin="0,4">
+                        <controls:PresentationSlideView Slide="{Binding}" IsThumbnail="True" Height="78" IsTabStop="False"/>
+                        <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Text="{Binding Number}" FontSize="11"/><TextBlock Text="{Binding Title}" FontSize="11" MaxWidth="95" TextTrimming="CharacterEllipsis"/></StackPanel>
+                    </StackPanel>
+                </DataTemplate></ListView.ItemTemplate>
+            </ListView>
+            <Grid x:Name="PreviewPanel" Grid.Column="1" RowSpacing="10">
+                <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                <Border Background="{ThemeResource ElevatedSurfaceBrush}" BorderBrush="{ThemeResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="4">
+                    <controls:PresentationSlideView x:Name="Preview" KeyDown="OnPreviewKeyDown"/>
+                </Border>
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                    <Button x:Name="PreviousButton" Click="OnPrevious" ToolTipService.ToolTip="{loc:Loc Key='Previous slide'}" AutomationProperties.Name="{loc:Loc Key='Previous slide'}"><FontIcon Glyph="&#xE76B;" FontSize="14"/></Button>
+                    <TextBlock x:Name="PageText" VerticalAlignment="Center" Margin="6,0"/>
+                    <Button x:Name="NextButton" Click="OnNext" ToolTipService.ToolTip="{loc:Loc Key='Next slide'}" AutomationProperties.Name="{loc:Loc Key='Next slide'}"><FontIcon Glyph="&#xE76C;" FontSize="14"/></Button>
+                    <Button x:Name="PlayButton" Click="OnPlay" Margin="8,0,0,0" ToolTipService.ToolTip="{loc:Loc Key='Preview animation'}" AutomationProperties.Name="{loc:Loc Key='Preview animation'}"><FontIcon Glyph="&#xE768;" FontSize="14"/></Button>
+                    <Button x:Name="StepButton" Click="OnStep" ToolTipService.ToolTip="{loc:Loc Key='Next animation step'}" AutomationProperties.Name="{loc:Loc Key='Next animation step'}"><FontIcon Glyph="&#xE893;" FontSize="14"/></Button>
+                    <Button x:Name="StopButton" Click="OnStop" ToolTipService.ToolTip="{loc:Loc Key='Show all elements'}" AutomationProperties.Name="{loc:Loc Key='Show all elements'}"><FontIcon Glyph="&#xE71A;" FontSize="14"/></Button>
+                </StackPanel>
+                <TextBlock Grid.Row="2" Text="{loc:Loc Key='Click text to edit it. During playback, Space reveals the next block; arrow keys change slides.'}"
+                           FontSize="11" TextWrapping="Wrap" Foreground="{ThemeResource SecondaryTextBrush}"/>
+            </Grid>
+            <ScrollViewer x:Name="FieldsScroll" Grid.Column="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel x:Name="FieldsPanel" Spacing="12" Padding="0,0,8,0">
+                    <TextBox x:Name="TitleBox" Header="{loc:Loc Key='Slide title'}" MaxLength="100" AcceptsReturn="True" TextWrapping="Wrap" TextChanged="OnTitleChanged" AutomationProperties.AutomationId="PresentationTitle"/>
+                    <TextBlock Text="{loc:Loc Key='Slide text'}" FontWeight="SemiBold" FontSize="13"/>
+                    <StackPanel x:Name="BodyFields" Spacing="8"/>
+                    <Button x:Name="AddParagraphButton" Click="OnAddParagraph" Content="{loc:Loc Key='Add paragraph'}"/>
+                    <ComboBox x:Name="LayoutBox" Header="{loc:Loc Key='Slide layout'}" HorizontalAlignment="Stretch" DisplayMemberPath="Label" SelectedValuePath="Key" Tag="layout" SelectionChanged="OnChoiceChanged"/>
+                    <ComboBox x:Name="AnimationBox" Header="{loc:Loc Key='Slide animation'}" HorizontalAlignment="Stretch" DisplayMemberPath="Label" SelectedValuePath="Key" Tag="animation" SelectionChanged="OnChoiceChanged"/>
+                    <ComboBox x:Name="FontBox" Header="{loc:Loc Key='Slide font'}" HorizontalAlignment="Stretch" DisplayMemberPath="Label" SelectedValuePath="Key" Tag="font" SelectionChanged="OnChoiceChanged"/>
+                    <TextBlock Text="{loc:Loc Key='Slide colors'}" FontSize="13" FontWeight="SemiBold"/>
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Button ToolTipService.ToolTip="{loc:Loc Key='Slide background'}" AutomationProperties.Name="{loc:Loc Key='Slide background'}">
+                            <Border x:Name="BackgroundSwatch" Width="34" Height="24" CornerRadius="4"/>
+                            <Button.Flyout><Flyout><ColorPicker x:Name="BackgroundPicker" Tag="background" IsAlphaEnabled="False" ColorChanged="OnColorChanged"/></Flyout></Button.Flyout>
+                        </Button>
+                        <Button ToolTipService.ToolTip="{loc:Loc Key='Title color'}" AutomationProperties.Name="{loc:Loc Key='Title color'}">
+                            <Border x:Name="TitleSwatch" Width="34" Height="24" CornerRadius="4"/>
+                            <Button.Flyout><Flyout><ColorPicker x:Name="TitlePicker" Tag="titleColor" IsAlphaEnabled="False" ColorChanged="OnColorChanged"/></Flyout></Button.Flyout>
+                        </Button>
+                        <Button ToolTipService.ToolTip="{loc:Loc Key='Body text color'}" AutomationProperties.Name="{loc:Loc Key='Body text color'}">
+                            <Border x:Name="BodySwatch" Width="34" Height="24" CornerRadius="4"/>
+                            <Button.Flyout><Flyout><ColorPicker x:Name="BodyPicker" Tag="bodyColor" IsAlphaEnabled="False" ColorChanged="OnColorChanged"/></Flyout></Button.Flyout>
+                        </Button>
+                    </StackPanel>
+                    <ComboBox x:Name="ThemeBox" Header="{loc:Loc Key='Theme for all slides'}" HorizontalAlignment="Stretch" DisplayMemberPath="Label" SelectedValuePath="Key" SelectionChanged="OnThemeChanged"/>
+                    <TextBox x:Name="NotesBox" Header="{loc:Loc Key='Speaker notes'}" MaxLength="5000" MinHeight="110" AcceptsReturn="True" TextWrapping="Wrap" TextChanged="OnNotesChanged"/>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+        <StackPanel Grid.Row="2" Spacing="6">
+            <ProgressBar x:Name="BusyBar" IsIndeterminate="True" Visibility="Collapsed"/>
+            <TextBlock x:Name="ErrorText" Visibility="Collapsed" TextWrapping="Wrap" Foreground="{ThemeResource SecondaryTextBrush}"/>
+        </StackPanel>
+    </Grid>
+</ContentDialog>

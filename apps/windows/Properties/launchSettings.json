@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Neuroset.App (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "Neuroset.App (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

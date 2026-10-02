@@ -1,0 +1,39 @@
+<Solution>
+  <Folder Name="/apps/android/">
+    <Project Path="apps/android/Neuroset.Android.csproj" />
+  </Folder>
+  <Folder Name="/src/Platform.Windows/">
+    <Project Path="src/Platform.Windows/Neuroset.Platform.Windows.csproj" />
+  </Folder>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Agent/">
+    <Project Path="src/Agent/Neuroset.Agent.csproj" />
+  </Folder>
+  <Folder Name="/apps/windows/">
+    <Project Path="apps/windows/Neuroset.App.csproj" />
+  </Folder>
+  <Folder Name="/src/Application/">
+    <Project Path="src/Application/Neuroset.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/Domain/">
+    <Project Path="src/Domain/Neuroset.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Infrastructure/">
+    <Project Path="src/Infrastructure/Neuroset.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Providers/">
+    <Project Path="src/Providers/Neuroset.Providers.csproj" />
+  </Folder>
+  <Folder Name="/src/Security/">
+    <Project Path="src/Security/Neuroset.Security.csproj" />
+  </Folder>
+  <Folder Name="/src/Storage/">
+    <Project Path="src/Storage/Neuroset.Storage.csproj" />
+  </Folder>
+  <Folder Name="/src/Tools/">
+    <Project Path="src/Tools/Neuroset.Tools.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Neuroset.Tests/Neuroset.Tests.csproj" />
+  </Folder>
+</Solution>

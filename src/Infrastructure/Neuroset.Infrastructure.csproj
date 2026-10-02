@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Agent\Neuroset.Agent.csproj" />
+    <ProjectReference Include="..\Application\Neuroset.Application.csproj" />
+    <ProjectReference Include="..\Domain\Neuroset.Domain.csproj" />
+    <ProjectReference Include="..\Providers\Neuroset.Providers.csproj" />
+    <ProjectReference Include="..\Security\Neuroset.Security.csproj" />
+    <ProjectReference Include="..\Storage\Neuroset.Storage.csproj" />
+    <ProjectReference Include="..\Tools\Neuroset.Tools.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Cronos" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.Extensions.Hosting" />
+    <PackageReference Include="Serilog.Sinks.File" />
+  </ItemGroup>
+</Project>

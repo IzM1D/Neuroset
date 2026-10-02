@@ -1,0 +1,27 @@
+<Project Sdk="Uno.Sdk/6.7.22">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Neuroset.App</RootNamespace>
+    <UnoFeatures>Skia;Toolkit</UnoFeatures>
+    <DefineConstants>$(DefineConstants);ANDROID</DefineConstants>
+    <PublishTrimmed>false</PublishTrimmed>
+    <UnoDisableHotDesign>true</UnoDisableHotDesign>
+    <UnoDisableMCPSupport>true</UnoDisableMCPSupport>
+  </PropertyGroup>
+  <Import Project="../../src/App/Neuroset.App.Shared.projitems" />
+  <ItemGroup>
+    <Compile Include="../../apps/android/MainWindow.cs" />
+    <Compile Include="../../apps/android/WindowInsetsController.cs" />
+    <Compile Include="../../apps/android/GlobalUsings.cs" />
+    <Compile Include="../../apps/android/RichDocumentView.Android.cs" />
+    <Compile Include="../../apps/android/AndroidCodeFormatter.cs" />
+    <ProjectReference Include="../../src/Infrastructure/Neuroset.Infrastructure.csproj" />
+    <PackageReference Include="Uno.WinUI.Runtime.Skia.Win32" VersionOverride="6.7.103" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Markdig" />
+    <PackageReference Include="ColorCode.Core" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+  </ItemGroup>
+</Project>

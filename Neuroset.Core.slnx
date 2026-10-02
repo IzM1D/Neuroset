@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Domain/Neuroset.Domain.csproj" />
+    <Project Path="src/Application/Neuroset.Application.csproj" />
+    <Project Path="src/Agent/Neuroset.Agent.csproj" />
+    <Project Path="src/Providers/Neuroset.Providers.csproj" />
+    <Project Path="src/Tools/Neuroset.Tools.csproj" />
+    <Project Path="src/Storage/Neuroset.Storage.csproj" />
+    <Project Path="src/Security/Neuroset.Security.csproj" />
+    <Project Path="src/Infrastructure/Neuroset.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Neuroset.Tests/Neuroset.Tests.csproj" />
+  </Folder>
+</Solution>

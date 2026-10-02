@@ -1,0 +1,18 @@
+<Project>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)**/*.cs"
+             Exclude="$(MSBuildThisFileDirectory)bin/**;$(MSBuildThisFileDirectory)obj/**;$(MSBuildThisFileDirectory)artifacts/**" />
+    <ApplicationDefinition Include="$(MSBuildThisFileDirectory)App.xaml" Link="App.xaml" />
+    <Page Include="$(MSBuildThisFileDirectory)**/*.xaml"
+          Exclude="$(MSBuildThisFileDirectory)App.xaml;$(MSBuildThisFileDirectory)bin/**;$(MSBuildThisFileDirectory)obj/**;$(MSBuildThisFileDirectory)artifacts/**">
+      <Link>%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Page>
+    <Content Include="$(MSBuildThisFileDirectory)Assets/*.png;$(MSBuildThisFileDirectory)Assets/*.ico">
+      <Link>Assets/%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Include="$(MSBuildThisFileDirectory)Assets/Fonts/*.ttf" Link="Assets/Fonts/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="$(MSBuildThisFileDirectory)../../third_party/cascadia-code/OFL.txt" Link="Assets/Fonts/OFL.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

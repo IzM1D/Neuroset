@@ -1,0 +1,28 @@
+using Microsoft.Data.Sqlite;
+using Neuroset.Application;
+
+namespace Neuroset.Storage;
+
+public sealed record UserDataOptions(string DatabasePath)
+{
+    public static UserDataOptions CreateDefault() => new(Path.Combine(Neuroset.Application.ApplicationPaths.DataDirectory, "agent-user-data.db"));
+}
+
+public sealed class SqliteUserDataStore(UserDataOptions options) : IUserDataStore, IDisposable
+{
+    private readonly SemaphoreSlim _initializationGate = new(1, 1);
+    private volatile bool _initialized;
+    private string ConnectionString => new SqliteConnectionStringBuilder { DataSource = options.DatabasePath, Mode = SqliteOpenMode.ReadWriteCreate, ForeignKeys = true, Pooling = true }.ToString();
+
+    public async Task<IReadOnlyList<UserDataItem>> ListAsync(string collection, int limit=100, CancellationToken cancellationToken=default)
+    {
+        ValidateName(collection,nameof(collection));var list=new List<UserDataItem>();await using var connection=await OpenAsync(cancellationToken).ConfigureAwait(false);await using var command=connection.CreateCommand();command.CommandText="SELECT CollectionName,ItemKey,ValueJson,UpdatedAt FROM AgentData WHERE CollectionName=$collection ORDER BY UpdatedAt DESC LIMIT $limit;";command.Parameters.AddWithValue("$collection",collection);command.Parameters.AddWithValue("$limit",Math.Clamp(limit,1,500));await using var reader=await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);while(await reader.ReadAsync(cancellationToken).ConfigureAwait(false))list.Add(new(reader.GetString(0),reader.GetString(1),reader.GetString(2),DateTimeOffset.Parse(reader.GetString(3),System.Globalization.CultureInfo.InvariantCulture)));return list;
+    }
+    public async Task<UserDataItem?> GetAsync(string collection,string key,CancellationToken cancellationToken=default){ValidateName(collection,nameof(collection));ValidateName(key,nameof(key));await using var connection=await OpenAsync(cancellationToken).ConfigureAwait(false);await using var command=connection.CreateCommand();command.CommandText="SELECT CollectionName,ItemKey,ValueJson,UpdatedAt FROM AgentData WHERE CollectionName=$collection AND ItemKey=$key;";command.Parameters.AddWithValue("$collection",collection);command.Parameters.AddWithValue("$key",key);await using var reader=await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);return await reader.ReadAsync(cancellationToken).ConfigureAwait(false)?new(reader.GetString(0),reader.GetString(1),reader.GetString(2),DateTimeOffset.Parse(reader.GetString(3),System.Globalization.CultureInfo.InvariantCulture)):null;}
+    public async Task UpsertAsync(UserDataItem item,CancellationToken cancellationToken=default){ValidateName(item.Collection,nameof(item.Collection));ValidateName(item.Key,nameof(item.Key));if(item.ValueJson.Length>1_000_000)throw new InvalidOperationException("Database values are limited to 1 MB.");System.Text.Json.JsonDocument.Parse(item.ValueJson).Dispose();await using var connection=await OpenAsync(cancellationToken).ConfigureAwait(false);await using var command=connection.CreateCommand();command.CommandText="INSERT INTO AgentData(CollectionName,ItemKey,ValueJson,UpdatedAt) VALUES($collection,$key,$value,$updated) ON CONFLICT(CollectionName,ItemKey) DO UPDATE SET ValueJson=excluded.ValueJson,UpdatedAt=excluded.UpdatedAt;";command.Parameters.AddWithValue("$collection",item.Collection);command.Parameters.AddWithValue("$key",item.Key);command.Parameters.AddWithValue("$value",item.ValueJson);command.Parameters.AddWithValue("$updated",item.UpdatedAt.ToString("O"));await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);}
+    public async Task DeleteAsync(string collection,string key,CancellationToken cancellationToken=default){ValidateName(collection,nameof(collection));ValidateName(key,nameof(key));await using var connection=await OpenAsync(cancellationToken).ConfigureAwait(false);await using var command=connection.CreateCommand();command.CommandText="DELETE FROM AgentData WHERE CollectionName=$collection AND ItemKey=$key;";command.Parameters.AddWithValue("$collection",collection);command.Parameters.AddWithValue("$key",key);await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);}
+    private async Task<SqliteConnection> OpenAsync(CancellationToken cancellationToken){await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);var connection=new SqliteConnection(ConnectionString);await connection.OpenAsync(cancellationToken).ConfigureAwait(false);return connection;}
+    private async Task EnsureInitializedAsync(CancellationToken cancellationToken){if(_initialized)return;await _initializationGate.WaitAsync(cancellationToken).ConfigureAwait(false);try{if(_initialized)return;Directory.CreateDirectory(Path.GetDirectoryName(options.DatabasePath)!);await using var connection=new SqliteConnection(ConnectionString);await connection.OpenAsync(cancellationToken).ConfigureAwait(false);await using var command=connection.CreateCommand();command.CommandText="CREATE TABLE IF NOT EXISTS AgentData(CollectionName TEXT NOT NULL,ItemKey TEXT NOT NULL,ValueJson TEXT NOT NULL,UpdatedAt TEXT NOT NULL,PRIMARY KEY(CollectionName,ItemKey));";await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);_initialized=true;}finally{_initializationGate.Release();}}
+    private static void ValidateName(string value,string parameter){ArgumentException.ThrowIfNullOrWhiteSpace(value,parameter);if(value.Length>128||value.Any(ch=>!(char.IsLetterOrDigit(ch)||ch is '_' or '-' or '.')))throw new ArgumentException("Only letters, digits, underscore, dash and dot are allowed.",parameter);}
+    public void Dispose() => _initializationGate.Dispose();
+}
