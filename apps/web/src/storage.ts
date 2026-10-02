@@ -10,15 +10,20 @@ export function loadSettings(): Settings {
       if (typeof saved[key] === typeof settings[key]) Object.assign(settings, { [key]: saved[key] });
     }
     settings.theme = settings.theme === 'light' ? 'light' : 'dark';
-    if (!settings.rememberKey) settings.apiKey = sessionStorage.getItem(prefix + 'key') || '';
+    if (!settings.rememberKey) {
+      settings.apiKey = sessionStorage.getItem(prefix + 'key') || '';
+      settings.searchKey = sessionStorage.getItem(prefix + 'searchKey') || '';
+    }
     return settings;
   } catch { return { ...defaultSettings }; }
 }
 
 export function saveSettings(settings: Settings) {
-  localStorage.setItem(prefix + 'settings', JSON.stringify({ ...settings, apiKey: settings.rememberKey ? settings.apiKey : '' }));
+  localStorage.setItem(prefix + 'settings', JSON.stringify({ ...settings, apiKey: settings.rememberKey ? settings.apiKey : '', searchKey: settings.rememberKey ? settings.searchKey : '' }));
   if (settings.rememberKey) sessionStorage.removeItem(prefix + 'key');
   else sessionStorage.setItem(prefix + 'key', settings.apiKey);
+  if (settings.rememberKey) sessionStorage.removeItem(prefix + 'searchKey');
+  else sessionStorage.setItem(prefix + 'searchKey', settings.searchKey);
 }
 
 export function loadChats(): Chat[] {

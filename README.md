@@ -2,7 +2,7 @@
 
 ## Веб-версия для GitHub Pages
 
-Текстовый веб-чат с OpenAI-совместимым `/chat/completions` находится в **[`apps/web`](apps/web/README.md)**: интерфейс в стиле ChatGPT, потоковые ответы, история чатов в браузере, Markdown, подсветка кода и настройки API.
+Веб-чат с OpenAI-совместимым `/chat/completions` находится в **[`apps/web`](apps/web/README.md)**: интерфейс в стиле ChatGPT, потоковые ответы, история чатов в браузере, Markdown, подсветка кода, веб-поиск, изолированный Python и генерация изображений.
 
 ```powershell
 cd apps/web

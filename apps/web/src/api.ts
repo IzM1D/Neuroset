@@ -1,4 +1,4 @@
-import type { Message, Settings } from './types';
+import type { ApiMessage, Message, Settings, ToolCall, ToolDefinition } from './types';
 
 export function endpoint(baseUrl: string, resource = 'chat/completions'): string {
   let url: URL;
@@ -11,7 +11,7 @@ export function endpoint(baseUrl: string, resource = 'chat/completions'): string
   return url.toString();
 }
 
-function headers(apiKey: string): Record<string, string> {
+export function headers(apiKey: string): Record<string, string> {
   return { 'Content-Type': 'application/json', ...(apiKey.trim() ? { Authorization: `Bearer ${apiKey.trim()}` } : {}) };
 }
 
@@ -23,7 +23,7 @@ function providerError(data: unknown): string | undefined {
   return 'API вернул ошибку.';
 }
 
-async function checkResponse(response: Response) {
+export async function checkResponse(response: Response) {
   if (response.ok) return;
   const text = await response.text();
   let detail = '';
@@ -77,13 +77,12 @@ export async function* sseData(body: ReadableStream<Uint8Array>): AsyncGenerator
   }
 }
 
-export async function completeChat(settings: Settings, messages: Message[], signal: AbortSignal, onText: (text: string) => void) {
+export async function requestCompletion(settings: Settings, messages: ApiMessage[], signal: AbortSignal, onText: (text: string) => void,
+  tools: ToolDefinition[] = [], forceTool?: string) {
   const body = {
     model: settings.model.trim(),
-    messages: [
-      ...(settings.systemPrompt.trim() ? [{ role: 'system', content: settings.systemPrompt.trim() }] : []),
-      ...messages.filter(message => message.content && !message.error).map(({ role, content }) => ({ role, content })),
-    ],
+    messages,
+    ...(tools.length ? { tools, tool_choice: forceTool ? { type: 'function', function: { name: forceTool } } : 'auto' } : {}),
     stream: settings.stream,
     ...(settings.temperature !== '' ? { temperature: Number(settings.temperature) } : {}),
     ...(settings.maxTokens !== '' ? { max_tokens: Number(settings.maxTokens) } : {}),
@@ -93,8 +92,23 @@ export async function completeChat(settings: Settings, messages: Message[], sign
   });
   await checkResponse(response);
   let receivedText = false;
+  let content = '';
+  const calls = new Map<number, ToolCall>();
+  const acceptCalls = (items: unknown, streaming: boolean) => {
+    if (!Array.isArray(items)) return;
+    for (const [position, item] of items.entries()) {
+      const index = streaming ? item.index : position;
+      if (!Number.isInteger(index) || index < 0 || index > 15) throw new Error('API вернул некорректный вызов инструмента.');
+      const call = calls.get(index) || { id: '', type: 'function' as const, function: { name: '', arguments: '' } };
+      if (typeof item.id === 'string') call.id += item.id;
+      if (typeof item.function?.name === 'string') call.function.name += item.function.name;
+      if (typeof item.function?.arguments === 'string') call.function.arguments += item.function.arguments;
+      if (call.function.arguments.length > 100_000) throw new Error('Слишком большой запрос к инструменту.');
+      calls.set(index, call);
+    }
+  };
   const accept = (text: unknown) => {
-    if (typeof text === 'string' && text) { receivedText = true; onText(text); }
+    if (typeof text === 'string' && text) { receivedText = true; content += text; onText(text); }
   };
   if (response.headers.get('content-type')?.includes('text/event-stream')) {
     if (!response.body) throw new Error('Браузер не смог прочитать поток ответа.');
@@ -107,6 +121,8 @@ export async function completeChat(settings: Settings, messages: Message[], sign
       if (error) throw new Error(error);
       const choice = data.choices?.[0];
       accept(choice?.delta?.content);
+      accept(choice?.delta?.refusal);
+      acceptCalls(choice?.delta?.tool_calls, true);
       if (choice?.finish_reason != null) finished = true;
     }
     if (!finished) throw new Error('Поток ответа прервался. Попробуйте повторить запрос.');
@@ -116,8 +132,21 @@ export async function completeChat(settings: Settings, messages: Message[], sign
     if (error) throw new Error(error);
     accept(data.choices?.[0]?.message?.content);
     accept(data.choices?.[0]?.message?.refusal);
+    acceptCalls(data.choices?.[0]?.message?.tool_calls, false);
   }
-  if (!receivedText) throw new Error('Модель вернула пустой ответ. Проверьте модель и параметры генерации.');
+  if (!receivedText && !calls.size) throw new Error('Модель вернула пустой ответ. Проверьте модель и параметры генерации.');
+  const toolCalls = [...calls.entries()].sort(([a], [b]) => a - b).map(([, call]) => call);
+  if (toolCalls.some(call => !call.id || !call.function.name) || new Set(toolCalls.map(call => call.id)).size !== toolCalls.length) {
+    throw new Error('API вернул неполный вызов инструмента.');
+  }
+  return { role: 'assistant' as const, content: content || null, ...(toolCalls.length ? { tool_calls: toolCalls } : {}) };
+}
+
+export async function completeChat(settings: Settings, messages: Message[], signal: AbortSignal, onText: (text: string) => void) {
+  return requestCompletion(settings, [
+    ...(settings.systemPrompt.trim() ? [{ role: 'system' as const, content: settings.systemPrompt.trim() }] : []),
+    ...messages.filter(message => message.content && !message.error).map(({ role, content }) => ({ role, content })),
+  ], signal, onText);
 }
 
 export function friendlyError(error: unknown): string {

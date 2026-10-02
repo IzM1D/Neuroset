@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import { Check, Copy, Pencil, RotateCcw } from 'lucide-react';
 import type { Message } from './types';
+import { ImageCard, ToolSteps } from './ToolResults';
 
 function CopyButton({ text, label = 'Копировать', onError }: { text: string | (() => string); label?: string; onError?: () => void }) {
   const [copied, setCopied] = useState(false);
@@ -37,6 +38,7 @@ export default function MessageView({ message, busy, generating, canRetry, onEdi
   return <article className={`message message-${message.role}`} aria-label={message.role === 'user' ? 'Ваше сообщение' : 'Ответ модели'}>
     {message.role === 'assistant' && <div className="assistant-label"><span className="mini-mark">N</span>Neuroset</div>}
     <div className="message-content">
+      {!!message.steps?.length && <ToolSteps steps={message.steps} />}
       {message.role === 'user' ? <div className="user-bubble">{message.content}</div> :
         <div className="markdown"><ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]} components={{
           pre: CodeBlock,
@@ -44,7 +46,8 @@ export default function MessageView({ message, busy, generating, canRetry, onEdi
           // External images aren't fetched automatically from model-authored Markdown.
           img: ({ alt, src }) => <a href={src} target="_blank" rel="noopener noreferrer">{alt || 'Открыть изображение'}</a>,
         }}>{message.content}</ReactMarkdown></div>}
-      {generating && !message.content && <div className="thinking" role="status"><span /><span /><span /><span className="sr-only">Модель готовит ответ</span></div>}
+      {message.images?.map(image => <ImageCard key={image.id} image={image} />)}
+      {generating && <div className="thinking" role="status"><span /><span /><span /><span className="sr-only">Модель готовит ответ</span></div>}
       {message.error && <p className="error-notice" role="alert">{message.error}</p>}
       {message.interrupted && !generating && <p className="interrupted">Генерация остановлена</p>}
     </div>

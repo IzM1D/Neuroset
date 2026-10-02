@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, BookOpen, Check, ChevronDown, Code2, Download, Lightbulb, Menu, MessageCircle, Moon, PanelLeftClose, Pencil, PenLine, Plus, Search, Settings2, Sparkles, Square, Sun, Trash2, X } from 'lucide-react';
-import { completeChat, friendlyError } from './api';
+import { ArrowDown, ArrowUp, BookOpen, Check, ChevronDown, Code2, Download, Globe, ImagePlus, Lightbulb, Menu, MessageCircle, Moon, PanelLeftClose, Pencil, PenLine, Plus, Search, Settings2, Sparkles, Square, Sun, Trash2, X } from 'lucide-react';
+import { discoverModels, friendlyError } from './api';
+import { runConversation } from './conversation';
+import { isImageModel, selectImageModel } from './images';
+import { removeImages } from './assets';
 import MessageView from './MessageView';
 import SettingsDialog from './SettingsDialog';
 import { loadChats, loadSettings, saveChats, saveSettings } from './storage';
@@ -28,6 +31,9 @@ export default function App() {
   const [renameText, setRenameText] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showScroll, setShowScroll] = useState(false);
+  const [imageMode, setImageMode] = useState(false);
+  const [discoveredImage, setDiscoveredImage] = useState('');
+  const imageModel = isImageModel(settings.imageModel) ? settings.imageModel : discoveredImage;
   const controller = useRef<AbortController | null>(null);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
@@ -65,6 +71,16 @@ export default function App() {
   }, [activeChat.messages, activeId]);
   useEffect(() => { if (deleteId) deleteDialog.current?.showModal(); }, [deleteId]);
   useEffect(() => () => controller.current?.abort(), []);
+  useEffect(() => {
+    setImageMode(false);
+    setDiscoveredImage('');
+    if (!settings.model) return;
+    const abort = new AbortController();
+    discoverModels(settings, AbortSignal.any([abort.signal, AbortSignal.timeout(15000)]))
+      .then(models => { if (!abort.signal.aborted) setDiscoveredImage(selectImageModel(models)); })
+      .catch(() => {}); // Manual image model entry remains available when /models is unsupported.
+    return () => abort.abort();
+  }, [settings.baseUrl, settings.apiKey, settings.model, settings.imageModel]);
 
   function updateChat(id: string, update: (chat: Chat) => Chat) {
     setChats(previous => previous.map(chat => chat.id === id ? update(chat) : chat));
@@ -73,6 +89,7 @@ export default function App() {
   function chooseChat(id: string) {
     setActiveId(id);
     setEditingId(null);
+    setImageMode(false);
     follow.current = true;
     setShowScroll(false);
     if (window.innerWidth <= 760) setSidebarOpen(false);
@@ -96,11 +113,13 @@ export default function App() {
     catch { setToast('Настройки действуют, но браузер не разрешил их сохранить.'); }
   }
 
-  async function generate(history: Message[]) {
+  async function generate(history: Message[], requestedImage?: string) {
     if (controller.current) return;
     const chatId = activeChat.id;
     const response: Message = { id: crypto.randomUUID(), role: 'assistant', content: '' };
     const abort = new AbortController();
+    const discarded = activeChat.messages.filter(message => !history.some(item => item.id === message.id));
+    void removeImages(discarded.flatMap(message => (message.images || []).map(image => image.id))).catch(() => {});
     controller.current = abort;
     setBusy({ chatId, messageId: response.id });
     follow.current = true;
@@ -112,17 +131,29 @@ export default function App() {
       messages: chat.messages.map(message => message.id === response.id ? { ...message, ...patch } : message),
     }));
     try {
-      await completeChat(settings, history, AbortSignal.any([abort.signal, AbortSignal.timeout(300_000)]), text => {
-        content += text;
-        if (!pendingFrame) pendingFrame = requestAnimationFrame(() => { pendingFrame = 0; updateResponse({ content }); });
-      });
+      await runConversation(settings, history, AbortSignal.any([abort.signal, AbortSignal.timeout(600_000)]), {
+        onText: text => {
+          content += text;
+          if (!pendingFrame) pendingFrame = requestAnimationFrame(() => { pendingFrame = 0; updateResponse({ content }); });
+        },
+        onStep: step => updateChat(chatId, chat => ({ ...chat, messages: chat.messages.map(message => {
+          if (message.id !== response.id) return message;
+          const steps = message.steps || [];
+          return { ...message, steps: steps.some(item => item.id === step.id) ? steps.map(item => item.id === step.id ? step : item) : [...steps, step] };
+        }) })),
+        onImages: images => updateChat(chatId, chat => ({ ...chat, messages: chat.messages.map(message => message.id === response.id ? { ...message, images: [...(message.images || []), ...images] } : message) })),
+        onProtocol: protocol => updateResponse({ protocol }),
+      }, requestedImage);
       updateResponse({ content });
     } catch (cause) {
       updateResponse({ content, ...(abort.signal.aborted ? { interrupted: true } : {
-        error: cause instanceof DOMException && cause.name === 'TimeoutError' ? 'Время ожидания ответа истекло (5 минут). Повторите запрос.' : friendlyError(cause),
+        error: cause instanceof DOMException && cause.name === 'TimeoutError' ? 'Время ожидания истекло (10 минут). Полученные результаты сохранены.' : friendlyError(cause),
       }) });
     } finally {
       cancelAnimationFrame(pendingFrame);
+      updateChat(chatId, chat => ({ ...chat, messages: chat.messages.map(message => message.id === response.id ? {
+        ...message, steps: message.steps?.map(step => step.status === 'running' ? { ...step, status: 'error', output: 'Действие прервано.' } : step),
+      } : message) }));
       controller.current = null;
       setBusy(null);
       textarea.current?.focus();
@@ -141,12 +172,16 @@ export default function App() {
     const editIndex = activeChat.messages.findIndex(message => message.id === editingId);
     const history = editIndex >= 0 ? activeChat.messages.slice(0, editIndex) : activeChat.messages;
     setEditingId(null);
-    void generate([...history, { id: crypto.randomUUID(), role: 'user', content }]);
+    const requestedImage = imageMode ? imageModel : undefined;
+    setImageMode(false);
+    void generate([...history, { id: crypto.randomUUID(), role: 'user', content }], requestedImage);
   }
 
   function retry(index: number) {
     if (busy || !checkConnection()) return;
-    void generate(activeChat.messages.slice(0, index));
+    const requestedImage = imageMode ? imageModel : undefined;
+    setImageMode(false);
+    void generate(activeChat.messages.slice(0, index), requestedImage);
   }
 
   function exportChat() {
@@ -220,9 +255,15 @@ export default function App() {
               if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && !window.matchMedia('(pointer: coarse)').matches) { event.preventDefault(); send(); }
             }} />
             <div className="composer-bottom"><button className="composer-model" type="button" onClick={() => setSettingsOpen(true)}><span className={`connection-dot ${settings.model ? 'configured' : ''}`} /><span>{settings.model || 'Подключить модель'}</span><ChevronDown size={13} /></button>
+              <div className="composer-tools">
+                <button type="button" className={`icon-button ${settings.webEnabled ? 'tool-enabled' : ''}`} aria-label="Интернет" aria-pressed={settings.webEnabled} title={settings.searchKey ? 'Поиск и чтение сайтов' : 'Чтение сайтов · поиск настраивается в настройках'} disabled={!!busy} onClick={() => persistSettings({ ...settings, webEnabled: !settings.webEnabled })}><Globe size={18} /></button>
+                <button type="button" className={`icon-button ${settings.pythonEnabled ? 'tool-enabled' : ''}`} aria-label="Python" aria-pressed={settings.pythonEnabled} title="Расчёты и графики на Python" disabled={!!busy} onClick={() => persistSettings({ ...settings, pythonEnabled: !settings.pythonEnabled })}><Code2 size={18} /></button>
+                <button type="button" className={`icon-button ${imageMode ? 'tool-enabled image-active' : ''}`} aria-label="Создать изображение" aria-pressed={imageMode} title={imageModel ? `Создать изображение · ${imageModel}` : 'Настроить модель изображений'} disabled={!!busy} onClick={() => { if (imageModel) setImageMode(!imageMode); else { setSettingsOpen(true); setToast('Укажите GPT Image модель в разделе «Инструменты».'); } }}><ImagePlus size={18} /></button>
+              </div>
               {busy ? <button className="send-button stop-button" type="button" title="Остановить ответ" aria-label="Остановить ответ" onClick={() => controller.current?.abort()}><Square size={15} fill="currentColor" /></button> : <button className="send-button" type="submit" title="Отправить сообщение" aria-label="Отправить сообщение" disabled={!activeChat.draft.trim()}><ArrowUp size={20} strokeWidth={2.4} /></button>}
             </div>
           </form>
+          {imageMode && <p className="image-mode-note">Создание изображения · {imageModel} · для следующего сообщения</p>}
           {isEmpty && <div className="suggestions">{suggestions.map(({ icon: Icon, title, description, prompt }) => <button key={title} onClick={() => { updateChat(activeChat.id, chat => ({ ...chat, draft: prompt })); textarea.current?.focus(); }}><Icon size={19} /><strong>{title}</strong><span>{description}</span></button>)}</div>}
           <p className="composer-hint">{isEmpty ? 'Ваши вопросы — начало чего-то интересного.' : 'Neuroset может ошибаться. Проверяйте важную информацию.'}<span className="keyboard-hint">{isEmpty ? '' : 'Shift + Enter — новая строка'}</span></p>
         </div>
@@ -232,6 +273,7 @@ export default function App() {
 
     {settingsOpen && <SettingsDialog settings={settings} onSave={next => { persistSettings(next); setSettingsOpen(false); textarea.current?.focus(); }} onClose={() => setSettingsOpen(false)} />}
     {deleteId && <dialog className="confirm-dialog" ref={deleteDialog} onCancel={() => setDeleteId(null)}><h2>Удалить чат?</h2><p>«{chats.find(chat => chat.id === deleteId)?.title}» будет удалён из этого браузера.</p><div className="dialog-footer"><button className="secondary-button" onClick={() => setDeleteId(null)}>Отмена</button><button className="danger-button" onClick={() => {
+      void removeImages((chats.find(chat => chat.id === deleteId)?.messages || []).flatMap(message => (message.images || []).map(image => image.id))).catch(() => {});
       const remaining = chats.filter(chat => chat.id !== deleteId);
       if (!remaining.length) remaining.push(createChat());
       setChats(remaining);

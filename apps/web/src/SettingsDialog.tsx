@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, Eye, EyeOff, LoaderCircle, RefreshCw, SlidersHorizontal, X } from 'lucide-react';
 import { discoverModels, endpoint, friendlyError } from './api';
+import { isImageModel, selectImageModel } from './images';
 import type { Settings } from './types';
 
 interface Props {
@@ -35,6 +36,7 @@ export default function SettingsDialog({ settings, onSave, onClose }: Props) {
     try {
       const result = await discoverModels(draft, AbortSignal.any([controller.signal, AbortSignal.timeout(30_000)]));
       setModels(result);
+      if (!draft.imageModel) set('imageModel', selectImageModel(result));
       setModelStatus(result.length ? `Доступно моделей: ${result.length}` : 'Список пуст. Введите модель вручную.');
     } catch (cause) {
       if (!controller.signal.aborted) setError(friendlyError(cause));
@@ -47,7 +49,8 @@ export default function SettingsDialog({ settings, onSave, onClose }: Props) {
       try {
         endpoint(draft.baseUrl);
         if (!draft.model.trim()) throw new Error('Введите название модели.');
-        onSave({ ...draft, baseUrl: draft.baseUrl.trim(), model: draft.model.trim(), apiKey: draft.apiKey.trim() });
+        if (draft.imageModel.trim() && !isImageModel(draft.imageModel.trim())) throw new Error('Для изображений укажите GPT Image модель, например gpt-image-2.');
+        onSave({ ...draft, baseUrl: draft.baseUrl.trim(), model: draft.model.trim(), apiKey: draft.apiKey.trim(), imageModel: draft.imageModel.trim(), searchKey: draft.searchKey.trim() });
       } catch (cause) { setError(friendlyError(cause)); }
     }}>
       <div className="dialog-heading">
@@ -76,6 +79,21 @@ export default function SettingsDialog({ settings, onSave, onClose }: Props) {
           <span className="field-hint">Введите название вручную или загрузите список из API.</span>
         </label>
         {modelStatus && <p className="model-status" role="status"><Check size={15} />{modelStatus}</p>}
+        <details className="advanced-settings tool-settings" open>
+          <summary>Инструменты</summary>
+          <p className="field-hint">Для инструментов разговорная модель должна поддерживать function calling.</p>
+          <label className="checkbox-row"><input type="checkbox" checked={draft.webEnabled} onChange={event => set('webEnabled', event.target.checked)} />Поиск в интернете и чтение ссылок</label>
+          <label className="field">Ключ поиска Tavily<input aria-label="Ключ поиска Tavily" type="password" value={draft.searchKey} onChange={event => set('searchKey', event.target.value)} placeholder="tvly-…" autoComplete="off" />
+            <span className="field-hint">Получить ключ: <a href="https://app.tavily.com" target="_blank" rel="noopener noreferrer">app.tavily.com</a>. Поиск и чтение страниц идут через Tavily. Без ключа ссылки читаются через Jina Reader. Запрос или URL передаётся выбранному сервису.</span>
+          </label>
+          <label className="checkbox-row"><input type="checkbox" checked={draft.pythonEnabled} onChange={event => set('pythonEnabled', event.target.checked)} />Python: расчёты, данные и графики</label>
+          <p className="field-hint">Python загружается при первом запуске. Каждый расчёт выполняется отдельно в браузере; доступны NumPy, pandas, SymPy и matplotlib.</p>
+          <label className="field">Модель изображений<input aria-label="Модель изображений" list="image-models" value={draft.imageModel} onChange={event => set('imageModel', event.target.value)} placeholder="Автоматически · например gpt-image-2" />
+            <datalist id="image-models">{models.filter(isImageModel).map(model => <option key={model} value={model} />)}</datalist>
+            <span className="field-hint">Тот же API и ключ, метод /images/generations. Модель определяется автоматически из списка; при необходимости укажите её вручную. Кнопка изображения включает генерацию для одного сообщения.</span>
+          </label>
+          <p className="field-hint">Ключ поиска сохраняется так же, как API-ключ: {draft.rememberKey ? 'в этом браузере' : 'до закрытия вкладки'}.</p>
+        </details>
         <details className="advanced-settings">
           <summary>Параметры генерации</summary>
           <label className="field">Системная инструкция<textarea value={draft.systemPrompt} onChange={event => set('systemPrompt', event.target.value)} rows={4} placeholder="Как модель должна отвечать?" /></label>
