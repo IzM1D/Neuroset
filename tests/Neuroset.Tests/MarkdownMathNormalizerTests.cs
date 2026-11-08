@@ -32,4 +32,11 @@ public sealed class MarkdownMathNormalizerTests
         prepared.MathFragments.Should().BeEmpty();
         prepared.Markdown.Should().Contain(@"\boxed{1}");
     }
+
+    [Fact]
+    public void Optimization_Objective_Uses_Readable_Operators_And_Styled_Letters()
+    {
+        MarkdownMathNormalizer.FormatLatex(@"\max_p ; \mathbb{E}[U(p)]-\lambda \cdot \text{Complexity}(p)")
+            .Should().Be("maxₚ ; 𝔼[U(p)]-λ · Complexity(p)");
+    }
 }
