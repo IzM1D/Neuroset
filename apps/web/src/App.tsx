@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, BookOpen, Check, ChevronDown, Code2, Download, Globe, ImagePlus, Lightbulb, Menu, MessageCircle, Moon, Paperclip, PanelLeftClose, Pencil, PenLine, Plus, Search, Settings2, Sparkles, Square, Sun, Trash2, X } from 'lucide-react';
 import { discoverModels, friendlyError } from './api';
 import { runConversation } from './conversation';
@@ -120,8 +120,10 @@ export default function App() {
     catch { setToast('Настройки действуют, но браузер не разрешил их сохранить.'); }
   }
 
-  async function attachFiles(files: File[]) {
-    if (!files.length || controller.current || busy || importing.current) return;
+  const attachFiles = useCallback(async (files: File[]) => {
+    if (!files.length) return;
+    if (controller.current || busy) { setToast('Дождитесь завершения ответа или остановите его, затем вставьте изображение.'); return; }
+    if (importing.current) { setToast('Дождитесь добавления предыдущих изображений.'); return; }
     importing.current = true;
     setUploading(true);
     const chatId = activeChat.id;
@@ -133,14 +135,37 @@ export default function App() {
         try { added.push(await importAttachment(file, [...existing, ...added])); }
         catch (cause) { errors.push(friendlyError(cause)); }
       }
-      if (added.length) updateChat(chatId, chat => ({ ...chat, draftAttachments: [...(chat.draftAttachments || []), ...added] }));
+      if (added.length) setChats(previous => previous.map(chat => chat.id === chatId ? { ...chat, draftAttachments: [...(chat.draftAttachments || []), ...added] } : chat));
       if (errors.length) setToast([...new Set(errors)].join(' '));
     } finally {
       importing.current = false;
       setUploading(false);
       textarea.current?.focus();
     }
-  }
+  }, [activeChat.id, activeChat.draftAttachments, busy]);
+
+  useEffect(() => {
+    const paste = (event: ClipboardEvent) => {
+      if (event.defaultPrevented || settingsOpen || deleteId || !event.clipboardData) return;
+      const target = event.target instanceof Element ? event.target : null;
+      const editor = target?.closest('input, textarea, [contenteditable]:not([contenteditable="false"]), [role="textbox"]');
+      if (editor && editor !== textarea.current) return;
+      // Copied files may have no MIME type. Validate their bytes during import.
+      const files = Array.from(event.clipboardData.files);
+      if (!files.length) {
+        for (const item of Array.from(event.clipboardData.items)) {
+          if (item.kind !== 'file') continue;
+          const file = item.getAsFile();
+          if (file) files.push(file);
+        }
+      }
+      if (!files.length) return;
+      event.preventDefault();
+      void attachFiles(files);
+    };
+    document.addEventListener('paste', paste);
+    return () => document.removeEventListener('paste', paste);
+  }, [attachFiles, settingsOpen, deleteId]);
 
   function replaceDraftAttachments(attachments: ImageAttachment[]) {
     const next = { ...activeChat, draftAttachments: attachments };
@@ -300,10 +325,7 @@ export default function App() {
           <form className="composer" onSubmit={event => { event.preventDefault(); send(); }}>
             {!!activeChat.draftAttachments?.length && <AttachmentList attachments={activeChat.draftAttachments} disabled={!!busy || uploading} onRemove={id => replaceDraftAttachments((activeChat.draftAttachments || []).filter(image => image.id !== id))} />}
             <input ref={fileInput} type="file" accept={imageAccept} multiple hidden aria-label="Загрузить изображения" onChange={event => { const files = Array.from(event.target.files || []); event.target.value = ''; void attachFiles(files); }} />
-            <textarea ref={textarea} id="message-input" aria-label="Сообщение" rows={1} placeholder="Спросите о чём угодно…" value={activeChat.draft} onChange={event => updateChat(activeChat.id, chat => ({ ...chat, draft: event.target.value }))} onPaste={event => {
-              const files = Array.from(event.clipboardData.items).filter(item => item.kind === 'file' && item.type.startsWith('image/')).map(item => item.getAsFile()).filter((file): file is File => !!file);
-              if (files.length) { event.preventDefault(); void attachFiles(files); }
-            }} onKeyDown={event => {
+            <textarea ref={textarea} id="message-input" aria-label="Сообщение" rows={1} placeholder="Спросите о чём угодно…" value={activeChat.draft} onChange={event => updateChat(activeChat.id, chat => ({ ...chat, draft: event.target.value }))} onKeyDown={event => {
               if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && !window.matchMedia('(pointer: coarse)').matches) { event.preventDefault(); send(); }
             }} />
             <div className="composer-bottom"><button className="composer-model" type="button" onClick={() => setSettingsOpen(true)}><span className={`connection-dot ${settings.model ? 'configured' : ''}`} /><span>{settings.model || 'Подключить модель'}</span><ChevronDown size={13} /></button>
