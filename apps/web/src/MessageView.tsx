@@ -5,6 +5,7 @@ import rehypeHighlight from 'rehype-highlight';
 import { Check, Copy, Pencil, RotateCcw } from 'lucide-react';
 import type { Message } from './types';
 import { ImageCard, ToolSteps } from './ToolResults';
+import AttachmentList from './AttachmentList';
 
 function CopyButton({ text, label = 'Копировать', onError }: { text: string | (() => string); label?: string; onError?: () => void }) {
   const [copied, setCopied] = useState(false);
@@ -39,7 +40,8 @@ export default function MessageView({ message, busy, generating, canRetry, onEdi
     {message.role === 'assistant' && <div className="assistant-label"><span className="mini-mark">N</span>Neuroset</div>}
     <div className="message-content">
       {!!message.steps?.length && <ToolSteps steps={message.steps} />}
-      {message.role === 'user' ? <div className="user-bubble">{message.content}</div> :
+      {!!message.attachments?.length && <AttachmentList attachments={message.attachments} />}
+      {message.role === 'user' ? (message.content && <div className="user-bubble">{message.content}</div>) :
         <div className="markdown"><ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]} components={{
           pre: CodeBlock,
           a: ({ children, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer">{children}</a>,

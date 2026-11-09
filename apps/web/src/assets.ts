@@ -11,17 +11,21 @@ function openDatabase(): Promise<IDBDatabase> {
 
 export async function saveImage(blob: Blob, title: string, model: string, kind: ImageArtifact['kind'] = 'image'): Promise<ImageArtifact> {
   const artifact = { id: crypto.randomUUID(), title, model, kind };
+  await storeImage(blob, artifact.id);
+  return artifact;
+}
+
+export async function storeImage(blob: Blob, id: string): Promise<void> {
   const database = await openDatabase();
   try {
     await new Promise<void>((resolve, reject) => {
       const transaction = database.transaction('images', 'readwrite');
-      transaction.objectStore('images').put(blob, artifact.id);
+      transaction.objectStore('images').put(blob, id);
       transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject(new Error('Не удалось сохранить изображение: хранилище браузера заполнено или недоступно.'));
       transaction.onabort = transaction.onerror;
     });
   } finally { database.close(); }
-  return artifact;
 }
 
 export async function loadImage(id: string): Promise<Blob | undefined> {

@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, BookOpen, Check, ChevronDown, Code2, Download, Globe, ImagePlus, Lightbulb, Menu, MessageCircle, Moon, PanelLeftClose, Pencil, PenLine, Plus, Search, Settings2, Sparkles, Square, Sun, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, BookOpen, Check, ChevronDown, Code2, Download, Globe, ImagePlus, Lightbulb, Menu, MessageCircle, Moon, Paperclip, PanelLeftClose, Pencil, PenLine, Plus, Search, Settings2, Sparkles, Square, Sun, Trash2, X } from 'lucide-react';
 import { discoverModels, friendlyError } from './api';
 import { runConversation } from './conversation';
 import { isImageModel, selectImageModel } from './images';
 import { removeImages } from './assets';
+import { chatImageIds, imageAccept, importAttachment } from './attachments';
+import AttachmentList from './AttachmentList';
 import MessageView from './MessageView';
 import SettingsDialog from './SettingsDialog';
 import { loadChats, loadSettings, saveChats, saveSettings } from './storage';
-import { createChat, type Chat, type Message, type Settings } from './types';
+import { createChat, type Chat, type ImageAttachment, type Message, type Settings } from './types';
 
 const suggestions = [
   { icon: PenLine, title: 'Написать текст', description: 'Найти нужные слова', prompt: 'Помоги написать текст. Сначала уточни тему, аудиторию и желаемый стиль.' },
@@ -33,6 +35,11 @@ export default function App() {
   const [showScroll, setShowScroll] = useState(false);
   const [imageMode, setImageMode] = useState(false);
   const [discoveredImage, setDiscoveredImage] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const importing = useRef(false);
+  const dragDepth = useRef(0);
+  const fileInput = useRef<HTMLInputElement>(null);
   const imageModel = isImageModel(settings.imageModel) ? settings.imageModel : discoveredImage;
   const controller = useRef<AbortController | null>(null);
   const textarea = useRef<HTMLTextAreaElement>(null);
@@ -96,7 +103,7 @@ export default function App() {
   }
 
   function newChat() {
-    const empty = chats.find(chat => !chat.messages.length && !chat.draft);
+    const empty = chats.find(chat => !chat.messages.length && !chat.draft && !chat.draftAttachments?.length);
     if (empty) chooseChat(empty.id);
     else {
       const chat = createChat();
@@ -113,18 +120,47 @@ export default function App() {
     catch { setToast('Настройки действуют, но браузер не разрешил их сохранить.'); }
   }
 
+  async function attachFiles(files: File[]) {
+    if (!files.length || controller.current || busy || importing.current) return;
+    importing.current = true;
+    setUploading(true);
+    const chatId = activeChat.id;
+    const existing = activeChat.draftAttachments || [];
+    const added: ImageAttachment[] = [];
+    const errors: string[] = [];
+    try {
+      for (const file of files) {
+        try { added.push(await importAttachment(file, [...existing, ...added])); }
+        catch (cause) { errors.push(friendlyError(cause)); }
+      }
+      if (added.length) updateChat(chatId, chat => ({ ...chat, draftAttachments: [...(chat.draftAttachments || []), ...added] }));
+      if (errors.length) setToast([...new Set(errors)].join(' '));
+    } finally {
+      importing.current = false;
+      setUploading(false);
+      textarea.current?.focus();
+    }
+  }
+
+  function replaceDraftAttachments(attachments: ImageAttachment[]) {
+    const next = { ...activeChat, draftAttachments: attachments };
+    const retained = new Set(chatImageIds(next));
+    void removeImages((activeChat.draftAttachments || []).map(image => image.id).filter(id => !retained.has(id))).catch(() => {});
+    updateChat(activeChat.id, chat => ({ ...chat, draftAttachments: attachments }));
+  }
+
   async function generate(history: Message[], requestedImage?: string) {
     if (controller.current) return;
     const chatId = activeChat.id;
     const response: Message = { id: crypto.randomUUID(), role: 'assistant', content: '' };
     const abort = new AbortController();
-    const discarded = activeChat.messages.filter(message => !history.some(item => item.id === message.id));
-    void removeImages(discarded.flatMap(message => (message.images || []).map(image => image.id))).catch(() => {});
+    const retained = new Set(chatImageIds({ ...activeChat, messages: history, draftAttachments: [] }));
+    void removeImages(chatImageIds(activeChat).filter(id => !retained.has(id))).catch(() => {});
     controller.current = abort;
     setBusy({ chatId, messageId: response.id });
     follow.current = true;
-    updateChat(chatId, chat => ({ ...chat, messages: [...history, response], draft: '', updatedAt: Date.now(),
-      title: chat.messages.length === 0 ? (history[0]?.content.slice(0, 55) || 'Новый чат') : chat.title }));
+    updateChat(chatId, chat => ({ ...chat, messages: [...history, response], draft: '', draftAttachments: [], updatedAt: Date.now(),
+      title: chat.messages.length === 0 ? (history[0]?.content.slice(0, 55) || history[0]?.attachments?.[0]?.name.slice(0, 55) || 'Новый чат') : chat.title }));
     let content = '';
     let pendingFrame = 0;
     const updateResponse = (patch: Partial<Message>) => updateChat(chatId, chat => ({ ...chat,
@@ -168,24 +204,25 @@ export default function App() {
 
   function send() {
     const content = activeChat.draft.trim();
-    if (!content || busy || !checkConnection()) return;
+    const attachments = activeChat.draftAttachments || [];
+    if ((!content && !attachments.length) || busy || importing.current || !checkConnection()) return;
     const editIndex = activeChat.messages.findIndex(message => message.id === editingId);
     const history = editIndex >= 0 ? activeChat.messages.slice(0, editIndex) : activeChat.messages;
     setEditingId(null);
     const requestedImage = imageMode ? imageModel : undefined;
     setImageMode(false);
-    void generate([...history, { id: crypto.randomUUID(), role: 'user', content }], requestedImage);
+    void generate([...history, { id: crypto.randomUUID(), role: 'user', content, ...(attachments.length ? { attachments } : {}) }], requestedImage);
   }
 
   function retry(index: number) {
-    if (busy || !checkConnection()) return;
+    if (busy || importing.current || !checkConnection()) return;
     const requestedImage = imageMode ? imageModel : undefined;
     setImageMode(false);
     void generate(activeChat.messages.slice(0, index), requestedImage);
   }
 
   function exportChat() {
-    const markdown = `# ${activeChat.title}\n\n` + activeChat.messages.map(message => `## ${message.role === 'user' ? 'Вы' : 'Neuroset'}\n\n${message.content}${message.error ? `\n\nОшибка: ${message.error}` : ''}`).join('\n\n---\n\n');
+    const markdown = `# ${activeChat.title}\n\n` + activeChat.messages.map(message => `## ${message.role === 'user' ? 'Вы' : 'Neuroset'}\n\n${message.content}${message.attachments?.length ? '\n\n' + message.attachments.map(image => `Вложение: ${image.name}`).join('\n') : ''}${message.error ? `\n\nОшибка: ${message.error}` : ''}`).join('\n\n---\n\n');
     const url = URL.createObjectURL(new Blob([markdown], { type: 'text/markdown;charset=utf-8' }));
     const link = document.createElement('a');
     link.href = url;
@@ -214,7 +251,7 @@ export default function App() {
             setRenamingId(null);
           }}><input autoFocus aria-label="Название чата" value={renameText} maxLength={100} onChange={event => setRenameText(event.target.value)} onKeyDown={event => { if (event.key === 'Escape') setRenamingId(null); }} /><button className="icon-button" aria-label="Сохранить название"><Check size={15} /></button></form> : <>
             <button className="chat-select" aria-current={chat.id === activeChat.id ? 'page' : undefined} title={chat.title} onClick={() => chooseChat(chat.id)}><MessageCircle size={15} /><span>{chat.title}</span>{busy?.chatId === chat.id && <span className="generating-dot" />}</button>
-            <div className="chat-row-actions"><button className="icon-button" aria-label={`Переименовать: ${chat.title}`} title="Переименовать" onClick={() => { setRenamingId(chat.id); setRenameText(chat.title); }}><Pencil size={13} /></button><button className="icon-button" aria-label={`Удалить: ${chat.title}`} title="Удалить чат" disabled={busy?.chatId === chat.id} onClick={() => setDeleteId(chat.id)}><Trash2 size={13} /></button></div>
+            <div className="chat-row-actions"><button className="icon-button" aria-label={`Переименовать: ${chat.title}`} title="Переименовать" onClick={() => { setRenamingId(chat.id); setRenameText(chat.title); }}><Pencil size={13} /></button><button className="icon-button" aria-label={`Удалить: ${chat.title}`} title="Удалить чат" disabled={busy?.chatId === chat.id || uploading} onClick={() => setDeleteId(chat.id)}><Trash2 size={13} /></button></div>
           </>}
         </div>)}
       </nav>
@@ -225,7 +262,16 @@ export default function App() {
       </div>
     </aside>
 
-    <main className="main-panel">
+    <main className="main-panel" onDragEnter={event => {
+      if (event.dataTransfer.types.includes('Files')) { event.preventDefault(); dragDepth.current++; if (!busy && !uploading) setDragging(true); }
+    }} onDragOver={event => {
+      if (event.dataTransfer.types.includes('Files')) { event.preventDefault(); event.dataTransfer.dropEffect = busy || uploading ? 'none' : 'copy'; }
+    }} onDragLeave={() => { dragDepth.current = Math.max(0, dragDepth.current - 1); if (!dragDepth.current) setDragging(false); }} onDrop={event => {
+      if (!event.dataTransfer.types.includes('Files')) return;
+      event.preventDefault(); dragDepth.current = 0; setDragging(false);
+      void attachFiles(Array.from(event.dataTransfer.files));
+    }}>
+      {dragging && <div className="image-drop-hint"><Paperclip size={28} /><span>Перетащите изображения сюда</span><small>PNG, JPEG, WebP, GIF · до 10 МБ · до 4 изображений</small></div>}
       <header className="topbar"><div className="topbar-left">{!sidebarOpen && <button className="icon-button" title="Открыть меню" aria-label="Открыть меню" onClick={() => setSidebarOpen(true)}><Menu size={21} /></button>}<button className="model-selector" onClick={() => setSettingsOpen(true)}><span>{settings.model || 'Neuroset'}</span><ChevronDown size={16} /></button><span className="topbar-tag">{settings.model ? 'Чат' : 'Ваш AI-помощник'}</span></div>
         <div className="topbar-actions">{!isEmpty && <button className="icon-button" title="Скачать чат" aria-label="Скачать чат" onClick={exportChat}><Download size={18} /></button>}<button className="icon-button" title="Новый чат" aria-label="Новый чат" onClick={newChat}><PenLine size={19} /></button></div>
       </header>
@@ -240,8 +286,9 @@ export default function App() {
           follow.current = element.scrollHeight - element.scrollTop - element.clientHeight < 90;
           setShowScroll(!follow.current);
         }}><div className="messages">
-          {activeChat.messages.map((message, index) => <MessageView key={message.id} message={message} busy={!!busy} generating={busy?.messageId === message.id} canRetry={message.role === 'assistant' && index === activeChat.messages.length - 1} onRetry={() => retry(index)} onEdit={() => {
+          {activeChat.messages.map((message, index) => <MessageView key={message.id} message={message} busy={!!busy || uploading} generating={busy?.messageId === message.id} canRetry={message.role === 'assistant' && index === activeChat.messages.length - 1} onRetry={() => retry(index)} onEdit={() => {
             setEditingId(message.id);
+            replaceDraftAttachments(message.attachments || []);
             updateChat(activeChat.id, chat => ({ ...chat, draft: message.content }));
             textarea.current?.focus();
           }} onCopyError={() => setToast('Не удалось скопировать. Выделите текст и скопируйте вручную.')} />)}
@@ -249,20 +296,27 @@ export default function App() {
 
         <div className="composer-area">
           {showScroll && !isEmpty && <button className="scroll-bottom icon-button" title="К последнему сообщению" aria-label="К последнему сообщению" onClick={() => { follow.current = true; scrollArea.current?.scrollTo({ top: scrollArea.current.scrollHeight, behavior: 'smooth' }); }}><ArrowDown size={18} /></button>}
-          {editingId && <div className="edit-notice"><span>Редактирование · последующие ответы будут заменены</span><button className="icon-button" aria-label="Отменить редактирование" onClick={() => { setEditingId(null); updateChat(activeChat.id, chat => ({ ...chat, draft: '' })); }}><X size={16} /></button></div>}
+          {editingId && <div className="edit-notice"><span>Редактирование · последующие ответы будут заменены</span><button className="icon-button" aria-label="Отменить редактирование" disabled={uploading} onClick={() => { setEditingId(null); replaceDraftAttachments([]); updateChat(activeChat.id, chat => ({ ...chat, draft: '' })); }}><X size={16} /></button></div>}
           <form className="composer" onSubmit={event => { event.preventDefault(); send(); }}>
-            <textarea ref={textarea} id="message-input" aria-label="Сообщение" rows={1} placeholder="Спросите о чём угодно…" value={activeChat.draft} onChange={event => updateChat(activeChat.id, chat => ({ ...chat, draft: event.target.value }))} onKeyDown={event => {
+            {!!activeChat.draftAttachments?.length && <AttachmentList attachments={activeChat.draftAttachments} disabled={!!busy || uploading} onRemove={id => replaceDraftAttachments((activeChat.draftAttachments || []).filter(image => image.id !== id))} />}
+            <input ref={fileInput} type="file" accept={imageAccept} multiple hidden aria-label="Загрузить изображения" onChange={event => { const files = Array.from(event.target.files || []); event.target.value = ''; void attachFiles(files); }} />
+            <textarea ref={textarea} id="message-input" aria-label="Сообщение" rows={1} placeholder="Спросите о чём угодно…" value={activeChat.draft} onChange={event => updateChat(activeChat.id, chat => ({ ...chat, draft: event.target.value }))} onPaste={event => {
+              const files = Array.from(event.clipboardData.items).filter(item => item.kind === 'file' && item.type.startsWith('image/')).map(item => item.getAsFile()).filter((file): file is File => !!file);
+              if (files.length) { event.preventDefault(); void attachFiles(files); }
+            }} onKeyDown={event => {
               if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && !window.matchMedia('(pointer: coarse)').matches) { event.preventDefault(); send(); }
             }} />
             <div className="composer-bottom"><button className="composer-model" type="button" onClick={() => setSettingsOpen(true)}><span className={`connection-dot ${settings.model ? 'configured' : ''}`} /><span>{settings.model || 'Подключить модель'}</span><ChevronDown size={13} /></button>
               <div className="composer-tools">
+                <button type="button" className="icon-button" aria-label="Прикрепить изображения" title="Прикрепить изображения · PNG, JPEG, WebP, GIF · до 10 МБ" disabled={!!busy || uploading} onClick={() => fileInput.current?.click()}><Paperclip size={18} /></button>
                 <button type="button" className={`icon-button ${settings.webEnabled ? 'tool-enabled' : ''}`} aria-label="Интернет" aria-pressed={settings.webEnabled} title={settings.searchKey ? 'Поиск и чтение сайтов' : 'Чтение сайтов · поиск настраивается в настройках'} disabled={!!busy} onClick={() => persistSettings({ ...settings, webEnabled: !settings.webEnabled })}><Globe size={18} /></button>
                 <button type="button" className={`icon-button ${settings.pythonEnabled ? 'tool-enabled' : ''}`} aria-label="Python" aria-pressed={settings.pythonEnabled} title="Расчёты и графики на Python" disabled={!!busy} onClick={() => persistSettings({ ...settings, pythonEnabled: !settings.pythonEnabled })}><Code2 size={18} /></button>
                 <button type="button" className={`icon-button ${imageMode ? 'tool-enabled image-active' : ''}`} aria-label="Создать изображение" aria-pressed={imageMode} title={imageModel ? `Создать изображение · ${imageModel}` : 'Настроить модель изображений'} disabled={!!busy} onClick={() => { if (imageModel) setImageMode(!imageMode); else { setSettingsOpen(true); setToast('Укажите GPT Image модель в разделе «Инструменты».'); } }}><ImagePlus size={18} /></button>
               </div>
-              {busy ? <button className="send-button stop-button" type="button" title="Остановить ответ" aria-label="Остановить ответ" onClick={() => controller.current?.abort()}><Square size={15} fill="currentColor" /></button> : <button className="send-button" type="submit" title="Отправить сообщение" aria-label="Отправить сообщение" disabled={!activeChat.draft.trim()}><ArrowUp size={20} strokeWidth={2.4} /></button>}
+              {busy ? <button className="send-button stop-button" type="button" title="Остановить ответ" aria-label="Остановить ответ" onClick={() => controller.current?.abort()}><Square size={15} fill="currentColor" /></button> : <button className="send-button" type="submit" title="Отправить сообщение" aria-label="Отправить сообщение" disabled={uploading || (!activeChat.draft.trim() && !activeChat.draftAttachments?.length)}><ArrowUp size={20} strokeWidth={2.4} /></button>}
             </div>
           </form>
+          {uploading && <p className="image-mode-note" role="status">Добавление изображений…</p>}
           {imageMode && <p className="image-mode-note">Создание изображения · {imageModel} · для следующего сообщения</p>}
           {isEmpty && <div className="suggestions">{suggestions.map(({ icon: Icon, title, description, prompt }) => <button key={title} onClick={() => { updateChat(activeChat.id, chat => ({ ...chat, draft: prompt })); textarea.current?.focus(); }}><Icon size={19} /><strong>{title}</strong><span>{description}</span></button>)}</div>}
           <p className="composer-hint">{isEmpty ? 'Ваши вопросы — начало чего-то интересного.' : 'Neuroset может ошибаться. Проверяйте важную информацию.'}<span className="keyboard-hint">{isEmpty ? '' : 'Shift + Enter — новая строка'}</span></p>
@@ -273,7 +327,8 @@ export default function App() {
 
     {settingsOpen && <SettingsDialog settings={settings} onSave={next => { persistSettings(next); setSettingsOpen(false); textarea.current?.focus(); }} onClose={() => setSettingsOpen(false)} />}
     {deleteId && <dialog className="confirm-dialog" ref={deleteDialog} onCancel={() => setDeleteId(null)}><h2>Удалить чат?</h2><p>«{chats.find(chat => chat.id === deleteId)?.title}» будет удалён из этого браузера.</p><div className="dialog-footer"><button className="secondary-button" onClick={() => setDeleteId(null)}>Отмена</button><button className="danger-button" onClick={() => {
-      void removeImages((chats.find(chat => chat.id === deleteId)?.messages || []).flatMap(message => (message.images || []).map(image => image.id))).catch(() => {});
+      const deleted = chats.find(chat => chat.id === deleteId);
+      if (deleted) void removeImages(chatImageIds(deleted)).catch(() => {});
       const remaining = chats.filter(chat => chat.id !== deleteId);
       if (!remaining.length) remaining.push(createChat());
       setChats(remaining);

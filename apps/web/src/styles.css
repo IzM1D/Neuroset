@@ -232,6 +232,16 @@ input[type='checkbox'] { accent-color: #83bb9f; width: 15px; height: 15px; margi
 .composer-tools .tool-enabled { color: var(--accent); background: #9bd8b810; }
 .composer-tools .image-active { box-shadow: inset 0 0 0 1px var(--accent); }
 .image-mode-note { color: var(--accent); font-size: 11px; text-align: center; margin: 10px 0 0; }
+.attachments { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 12px; }
+.attachment-preview { position: relative; width: 112px; max-width: 100%; margin: 0; border: 1px solid var(--strong-border); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.attachment-preview > a { display: block; }
+.attachment-preview img { display: block; width: 100%; height: 90px; object-fit: cover; }
+.attachment-preview figcaption { padding: 7px 8px; font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.attachment-preview .attachment-remove { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; background: var(--surface); border: 1px solid var(--strong-border); border-radius: 50%; }
+.attachment-placeholder { display: grid; place-items: center; min-height: 90px; padding: 8px; font-size: 10px; color: var(--muted); overflow-wrap: anywhere; }
+.image-drop-hint { position: absolute; inset: 12px; z-index: 15; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 20px; border: 2px dashed var(--accent); border-radius: 20px; background: var(--surface); color: var(--accent); text-align: center; pointer-events: none; }
+.image-drop-hint small { color: var(--muted); }
+.composer-tools { flex-shrink: 0; }
 .tool-settings .checkbox-row { margin: 16px 0 8px; }
 .tool-settings a { color: var(--accent); }
 .tool-steps { display: grid; gap: 8px; margin-bottom: 20px; }
