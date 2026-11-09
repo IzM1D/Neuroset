@@ -74,6 +74,7 @@ public partial class ChatMessageViewModel : ObservableObject
             if(call.Name.Equals(ImageGenerationPolicy.ToolName,StringComparison.OrdinalIgnoreCase)&&call.Execution is{Succeeded:true}&&TryCreateGeneratedImage(call.Id,call.Execution.Output,out var generatedImage))vm.GeneratedImages.Add(generatedImage);
             if(call.Name.Equals(PresentationPolicy.ToolName,StringComparison.OrdinalIgnoreCase)&&call.Execution is{Succeeded:true}&&TryCreatePresentation(call.Id,call.Execution.Output,out var presentation))vm.Presentations.Add(presentation);
             if(call.Name.Equals("render_html",StringComparison.OrdinalIgnoreCase)&&call.Execution is{Succeeded:true}&&TryCreateHtmlArtifact(call.Id,call.Execution.Output,out var artifact))vm.HtmlArtifacts.Add(artifact);
+            if(call.Name.Equals("math_canvas",StringComparison.OrdinalIgnoreCase)&&call.Execution is{Succeeded:true}&&TryCreateHtmlArtifact(call.Id,call.Execution.Output,out var mathArtifact))vm.HtmlArtifacts.Add(mathArtifact);
             if(call.Name.Equals("widgets",StringComparison.OrdinalIgnoreCase)&&call.Execution is{Succeeded:true}&&TryCreateWidget(call.Id,call.Execution.Output,out var widget))vm.Widgets.Add(widget);
             if(call.Name.Equals("rich_table",StringComparison.OrdinalIgnoreCase)&&call.Execution is{Succeeded:true}&&TryCreateRichTable(call.Id,call.Execution.Output,out var table))vm.Tables.Add(table);
             if(call.Name.Equals("canvas",StringComparison.OrdinalIgnoreCase)&&call.Execution is{Succeeded:true}&&TryCreateCanvas(call.Id,call.Execution.Output,out var canvas))vm.Canvases.Add(canvas);
@@ -512,7 +513,7 @@ public partial class ToolActivityViewModel : ObservableObject
     public bool IsWorkPlan=>Name.Equals("request_work_budget",StringComparison.OrdinalIgnoreCase);
     public bool IsGenericReport=>!IsWebSearch;
     public string Glyph=>Name switch{"web_search"=>"\uE774","run_python"=>"\uE943","fetch_url"=>"\uE8A7","request_work_budget"=>"\uE9D9","delegate_coding_task"=>"\uE716","workspace_patch"=>"\uE70F","git_inspect"=>"\uE8A7","git_worktree"=>"\uE8F1","workspace_checkpoint"=>"\uE7C4","coding_context"=>"\uE8B7","mcp_discover" or "mcp_call"=>"\uE774",_=>"\uE90F"};
-    public string DisplayName=>Name.Equals(PresentationPolicy.ToolName,StringComparison.OrdinalIgnoreCase)?LocalizationService.Get("Preparing presentation"):Name.Equals(ImageGenerationPolicy.ToolName,StringComparison.OrdinalIgnoreCase)?LocalizationService.Get("Generating image"):LocalizationService.Get(Name switch{"web_search"=>"Searching the web","fetch_url"=>"Reading page","run_python"=>"Running Python","request_work_budget"=>"Planning the work","delegate_coding_task"=>"Delegating coding task","coding_context"=>"Reading project context","workspace_patch"=>"Applying atomic patch","git_inspect"=>"Inspecting Git","git_worktree"=>"Managing worktree","workspace_checkpoint"=>"Managing checkpoint","mcp_discover"=>"Discovering MCP servers","mcp_call"=>"Calling MCP tool","render_html"=>"Rendering interactive HTML","widgets"=>"Preparing widget","rich_table"=>"Formatting table","canvas"=>"Preparing canvas","run_process"=>"Running command","workspace_files"=>"Working with files","knowledge_search"=>"Searching knowledge","http_request"=>"Calling API","database"=>"Accessing user data","memory_search"=>"Reading memory","memory_manage"=>"Updating memory","schedule_task"=>"Updating scheduler","notify_user"=>"Sending notification",_=>Name.Replace('_',' ')});
+    public string DisplayName=>Name.Equals(PresentationPolicy.ToolName,StringComparison.OrdinalIgnoreCase)?LocalizationService.Get("Preparing presentation"):Name.Equals(ImageGenerationPolicy.ToolName,StringComparison.OrdinalIgnoreCase)?LocalizationService.Get("Generating image"):LocalizationService.Get(Name switch{"web_search"=>"Searching the web","fetch_url"=>"Reading page","run_python"=>"Running Python","request_work_budget"=>"Planning the work","delegate_coding_task"=>"Delegating coding task","coding_context"=>"Reading project context","workspace_patch"=>"Applying atomic patch","git_inspect"=>"Inspecting Git","git_worktree"=>"Managing worktree","workspace_checkpoint"=>"Managing checkpoint","mcp_discover"=>"Discovering MCP servers","mcp_call"=>"Calling MCP tool","render_html"=>"Rendering interactive HTML","math_canvas"=>"Rendering mathematics","widgets"=>"Preparing widget","rich_table"=>"Formatting table","canvas"=>"Preparing canvas","run_process"=>"Running command","workspace_files"=>"Working with files","knowledge_search"=>"Searching knowledge","http_request"=>"Calling API","database"=>"Accessing user data","memory_search"=>"Reading memory","memory_manage"=>"Updating memory","schedule_task"=>"Updating scheduler","notify_user"=>"Sending notification",_=>Name.Replace('_',' ')});
     public string ReportTitle=>HeaderText;
     public string HeaderText
     {
@@ -635,6 +636,7 @@ public partial class ToolActivityViewModel : ObservableObject
         }
         if(Name.Equals("rich_table",StringComparison.OrdinalIgnoreCase))return LocalizationService.Get("Native table created.");
         if(Name.Equals("canvas",StringComparison.OrdinalIgnoreCase))return LocalizationService.Get("Native content canvas created.");
+        if(Name.Equals("math_canvas",StringComparison.OrdinalIgnoreCase))return LocalizationService.Get("Mathematical canvas created.");
         if(string.IsNullOrWhiteSpace(output))return LocalizationService.Get("The tool completed without a text report.");
         try
         {
@@ -688,6 +690,7 @@ public partial class ToolActivityViewModel : ObservableObject
         "mcp_discover" or "mcp_call"=>"MCP integrations",
         "knowledge_search"=>"Knowledge",
         "render_html"=>"Interactive HTML",
+        "math_canvas"=>"Math canvas",
         "image_generation"=>"Image generation",
         "presentation"=>"Presentations",
         "widgets"=>"Widgets",

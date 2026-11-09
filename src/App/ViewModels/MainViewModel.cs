@@ -497,6 +497,13 @@ public partial class MainViewModel(
                                 streaming.HtmlArtifacts.All(item => item.CallId != artifact.CallId))
                                 streaming.HtmlArtifacts.Add(artifact);
                         }
+                        if (completed.Succeeded && completed.Name.Equals("math_canvas", StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (string.IsNullOrWhiteSpace(streaming.Content)) streaming.Content = L.Get("Mathematical canvas");
+                            if (ChatMessageViewModel.TryCreateHtmlArtifact(completed.CallId, completed.Output, out var mathArtifact) &&
+                                streaming.HtmlArtifacts.All(item => item.CallId != mathArtifact.CallId))
+                                streaming.HtmlArtifacts.Add(mathArtifact);
+                        }
                         if (completed.Succeeded && completed.Name.Equals("widgets", StringComparison.OrdinalIgnoreCase))
                         {
                             if (string.IsNullOrWhiteSpace(streaming.Content)) streaming.Content = L.Get("Here is the requested widget.");

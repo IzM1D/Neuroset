@@ -69,7 +69,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ITool,WebSearchTool>(); services.AddSingleton<ITool,WebFetchTool>();
         services.AddSingleton<ITool>(sp=>new HttpApiTool(sp.GetRequiredService<IHttpClientFactory>().CreateClient("http-tool")));
         services.AddSingleton<ITool>(sp=>new WidgetTool(sp.GetRequiredService<IHttpClientFactory>().CreateClient("widgets")));
-        services.AddSingleton<ITool,RichTableTool>(); services.AddSingleton<ITool,CanvasTool>();
+        services.AddSingleton<ITool,RichTableTool>(); services.AddSingleton<ITool,CanvasTool>(); services.AddSingleton<ITool,MathCanvasTool>();
         services.AddSingleton<ITool,KnowledgeSearchTool>(); services.AddSingleton<ITool,PythonExecutionTool>(); services.AddSingleton<ITool,HtmlArtifactTool>(); services.AddSingleton<ITool,DatabaseTool>();
         services.AddSingleton<ITool,WorkspaceFileTool>(); services.AddSingleton<ITool,WorkspacePatchTool>(); services.AddSingleton<ITool,ProcessExecutionTool>(); services.AddSingleton<ITool,CodingContextTool>(); services.AddSingleton<ITool,GitInspectTool>(); services.AddSingleton<ITool,GitWorktreeTool>(); services.AddSingleton<ITool,WorkspaceCheckpointTool>(); services.AddSingleton<ITool,McpDiscoveryTool>(); services.AddSingleton<ITool,McpCallTool>();
         services.AddSingleton<ITool,MemorySearchTool>(); services.AddSingleton<ITool,MemoryManageTool>(); services.AddSingleton<ITool,NotificationTool>(); services.AddSingleton<ITool,SchedulerTool>();

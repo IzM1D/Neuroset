@@ -39,6 +39,7 @@ public sealed class DependencyGraphTests
             provider.GetRequiredService<IToolRegistry>().GetAll().Should().Contain(tool => tool.Descriptor.Name == "schedule_task");
             provider.GetRequiredService<IToolRegistry>().GetAll().Should().Contain(tool => tool.Descriptor.Name == "run_python");
             provider.GetRequiredService<IToolRegistry>().GetAll().Should().Contain(tool => tool.Descriptor.Name == "render_html");
+            provider.GetRequiredService<IToolRegistry>().GetAll().Should().Contain(tool => tool.Descriptor.Name == "math_canvas");
             provider.GetRequiredService<IToolRegistry>().GetAll().Should().Contain(tool => tool.Descriptor.Name == "widgets");
         });
 

@@ -30,6 +30,15 @@ public sealed class ToolAndPermissionTests
     {
         var tool=new CanvasTool();using var args=JsonDocument.Parse("""{"title":"Training script","format":"code","language":"python","description":"Minimal example","content":"print('hello')"}""");var result=await tool.ExecuteAsync(args.RootElement,new(Guid.NewGuid(),"call",Path.GetTempPath(),false,new Dictionary<string,string>()));result.Success.Should().BeTrue(result.Error);using var output=JsonDocument.Parse(result.Output);output.RootElement.GetProperty("kind").GetString().Should().Be("canvas");output.RootElement.GetProperty("format").GetString().Should().Be("code");output.RootElement.GetProperty("language").GetString().Should().Be("python");
     }
+    [Fact]public async Task Math_Canvas_Tool_Produces_Typeset_Html_Artifact()
+    {
+        var root=Path.Combine(Path.GetTempPath(),"NeurosetMathCanvasTests",Guid.NewGuid().ToString("N"));
+        try
+        {
+            var tool=new MathCanvasTool(new HtmlArtifactOptions(root));using var args=JsonDocument.Parse("""{"title":"Objective","latex":"\\max_p \\mathbb{E}[U(p)]"}""");var result=await tool.ExecuteAsync(args.RootElement,new(Guid.NewGuid(),"call",root,false,new Dictionary<string,string>()));result.Success.Should().BeTrue(result.Error);using var output=JsonDocument.Parse(result.Output);output.RootElement.GetProperty("kind").GetString().Should().Be("math_canvas");var path=output.RootElement.GetProperty("path").GetString();File.Exists(path).Should().BeTrue();(await File.ReadAllTextAsync(path!)).Should().Contain("mathjax@3").And.Contain("\\max_p");
+        }
+        finally { if(Directory.Exists(root))Directory.Delete(root,true); }
+    }
     [Fact]public async Task Python_Tool_Requires_A_Title_And_Preserves_Exact_Output()
     {
         const string stdout="first line\nαβγ <>&\nlast line";
