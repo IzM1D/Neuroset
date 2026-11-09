@@ -23,18 +23,7 @@ public static partial class MarkdownMathNormalizer
         ["cup"]="∪", ["cap"]="∩", ["emptyset"]="∅", ["forall"]="∀", ["exists"]="∃", ["neg"]="¬",
         ["land"]="∧", ["lor"]="∨", ["to"]="→", ["rightarrow"]="→", ["leftarrow"]="←",
         ["Rightarrow"]="⇒", ["Leftarrow"]="⇐", ["leftrightarrow"]="↔", ["mapsto"]="↦",
-        ["ldots"]="…", ["cdots"]="⋯", ["vdots"]="⋮", ["ddots"]="⋱",
-        ["langle"]="⟨", ["rangle"]="⟩", ["lceil"]="⌈", ["rceil"]="⌉", ["lfloor"]="⌊", ["rfloor"]="⌋",
-        ["mid"]="∣", ["vert"]="|", ["Vert"]="‖", ["colon"]=":", ["Re"]="ℜ", ["Im"]="ℑ",
-        // Named operators are emitted as text instead of leaking a backslash into
-        // the UI. Keeping them in the same table also makes variants such as
-        // `\max_p` flow through the normal subscript conversion below.
-        ["max"]="max", ["min"]="min", ["sup"]="sup", ["inf"]="inf", ["lim"]="lim",
-        ["argmax"]="arg max", ["argmin"]="arg min", ["log"]="log", ["ln"]="ln",
-        ["exp"]="exp", ["sin"]="sin", ["cos"]="cos", ["tan"]="tan",
-        ["Big"]="", ["Bigl"]="", ["Bigr"]="", ["Bigm"]="", ["Biggl"]="", ["Biggr"]="",
-        ["big"]="", ["bigl"]="", ["bigr"]="", ["bigm"]="", ["biggl"]="", ["biggr"]="",
-        ["displaystyle"]="", ["limits"]=""
+        ["ldots"]="…", ["cdots"]="⋯", ["vdots"]="⋮", ["ddots"]="⋱"
     };
 
     private static readonly IReadOnlyDictionary<char, char> SuperscriptCharacters = new Dictionary<char, char>
@@ -116,20 +105,11 @@ public static partial class MarkdownMathNormalizer
         {
             var before=value;
             value=ReplaceTwoArgumentCommand(value,"frac",(left,right)=>$"{WrapFractionPart(FormatLatex(left))}⁄{WrapFractionPart(FormatLatex(right))}");
-            value=ReplaceTwoArgumentCommand(value,"dfrac",(left,right)=>$"{WrapFractionPart(FormatLatex(left))}⁄{WrapFractionPart(FormatLatex(right))}");
-            value=ReplaceTwoArgumentCommand(value,"tfrac",(left,right)=>$"{WrapFractionPart(FormatLatex(left))}⁄{WrapFractionPart(FormatLatex(right))}");
             value=ReplaceOneArgumentCommand(value,"boxed",body=>$"⟦ {FormatLatex(body)} ⟧");
             value=ReplaceOneArgumentCommand(value,"sqrt",body=>$"√{WrapRadicand(FormatLatex(body))}");
             value=ReplaceOneArgumentCommand(value,"text",FormatLatex);
-            value=ReplaceOneArgumentCommand(value,"textnormal",FormatLatex);
             value=ReplaceOneArgumentCommand(value,"mathrm",FormatLatex);
-            value=ReplaceOneArgumentCommand(value,"mathbb",body=>ApplyLetterStyle(FormatLatex(body),BlackboardLetters));
-            value=ReplaceOneArgumentCommand(value,"mathcal",body=>ApplyLetterStyle(FormatLatex(body),CalligraphicLetters));
-            value=ReplaceOneArgumentCommand(value,"mathfrak",body=>ApplyLetterStyle(FormatLatex(body),FrakturLetters));
-            value=ReplaceOneArgumentCommand(value,"mathbf",body=>ApplyLetterStyle(FormatLatex(body),BoldLetters));
-            value=ReplaceOneArgumentCommand(value,"boldsymbol",body=>ApplyLetterStyle(FormatLatex(body),BoldLetters));
-            value=ReplaceOneArgumentCommand(value,"mathsf",FormatLatex);
-            value=ReplaceOneArgumentCommand(value,"mathtt",FormatLatex);
+            value=ReplaceOneArgumentCommand(value,"mathbf",FormatLatex);
             value=ReplaceOneArgumentCommand(value,"operatorname",FormatLatex);
             value=BracedSuperscriptRegex().Replace(value,match=>ToScript(match.Groups[1].Value,SuperscriptCharacters,'^'));
             value=BracedSubscriptRegex().Replace(value,match=>ToScript(match.Groups[1].Value,SubscriptCharacters,'_'));
@@ -138,9 +118,7 @@ public static partial class MarkdownMathNormalizer
             if(value==before)break;
         }
 
-        // Replace longer names first so a command such as `\\infty` is not
-        // accidentally split by the shorter `\\in` entry.
-        foreach(var command in CommandSymbols.OrderByDescending(command=>command.Key.Length))
+        foreach(var command in CommandSymbols)
             value=value.Replace("\\"+command.Key,command.Value,StringComparison.Ordinal);
         value=UnknownCommandRegex().Replace(value,match=>match.Groups[1].Value);
         value=value.Replace('{','(').Replace('}',')');
@@ -292,41 +270,6 @@ public static partial class MarkdownMathNormalizer
 
     private static string WrapFractionPart(string value)=>value.IndexOfAny(['+','-','=',' '])>=0?$"({value})":value;
     private static string WrapRadicand(string value)=>value.Length==1||value.All(char.IsLetterOrDigit)?value:$"({value})";
-
-    private static string ApplyLetterStyle(string value,IReadOnlyDictionary<char,string> alphabet)
-    {
-        if(value.Length==0)return value;
-        var builder=new StringBuilder(value.Length);
-        foreach(var character in value)
-            builder.Append(alphabet.TryGetValue(character,out var styled)?styled:character.ToString());
-        return builder.ToString();
-    }
-
-    private static readonly IReadOnlyDictionary<char,string> BlackboardLetters = CreateAlphabet(
-        "𝔸𝔹ℂ𝔻𝔼𝔽𝔾ℍ𝕀𝕁𝕂𝕃𝕄ℕ𝕆ℙℚℝ𝕊𝕋𝕌𝕍𝕎𝕏𝕐ℤ",
-        "𝕒𝕓𝕔𝕕𝕖𝕗𝕘𝕙𝕚𝕛𝕜𝕝𝕞𝕟𝕠𝕡𝕢𝕣𝕤𝕥𝕦𝕧𝕨𝕩𝕪𝕫");
-    private static readonly IReadOnlyDictionary<char,string> CalligraphicLetters = CreateAlphabet(
-        "𝒜ℬ𝒞𝒟ℰℱ𝒢ℋℐ𝒥𝒦ℒℳ𝒩𝒪𝒫𝒬ℛ𝒮𝒯𝒰𝒱𝒲𝒳𝒴𝒵",
-        "𝒶𝒷𝒸𝒹ℯ𝒻ℊ𝒽𝒾𝒿𝓀𝓁𝓂𝓃ℴ𝓅𝓆𝓇𝓈𝓉𝓊𝓋𝓌𝓍𝓎𝓏");
-    private static readonly IReadOnlyDictionary<char,string> FrakturLetters = CreateAlphabet(
-        "𝔄𝔅ℭ𝔇𝔈𝔉𝔊ℌℑ𝔍𝔎𝔏𝔐𝔑𝔒𝔓𝔔ℜ𝔖𝔗𝔘𝔙𝔚𝔛𝔜ℨ",
-        "𝔞𝔟𝔠𝔡𝔢𝔣𝔤𝔥𝔦𝔧𝔨𝔩𝔪𝔫𝔬𝔭𝔮𝔯𝔰𝔱𝔲𝔳𝔴𝔵𝔶𝔷");
-    private static readonly IReadOnlyDictionary<char,string> BoldLetters = CreateAlphabet(
-        "𝐀𝐁𝐂𝐃𝐄𝐅𝐆𝐇𝐈𝐉𝐊𝐋𝐌𝐍𝐎𝐏𝐐𝐑𝐒𝐓𝐔𝐕𝐖𝐗𝐘𝐙",
-        "𝐚𝐛𝐜𝐝𝐞𝐟𝐠𝐡𝐢𝐣𝐤𝐥𝐦𝐧𝐨𝐩𝐪𝐫𝐬𝐭𝐮𝐯𝐰𝐱𝐲𝐳");
-
-    private static IReadOnlyDictionary<char,string> CreateAlphabet(string upper,string lower)
-    {
-        var alphabet=new Dictionary<char,string>(52);
-        var upperLetters=System.Globalization.StringInfo.ParseCombiningCharacters(upper);
-        var lowerLetters=System.Globalization.StringInfo.ParseCombiningCharacters(lower);
-        for(var index=0;index<26;index++)
-        {
-            alphabet[(char)('A'+index)]=upper.Substring(upperLetters[index],index<25?upperLetters[index+1]-upperLetters[index]:upper.Length-upperLetters[index]);
-            alphabet[(char)('a'+index)]=lower.Substring(lowerLetters[index],index<25?lowerLetters[index+1]-lowerLetters[index]:lower.Length-lowerLetters[index]);
-        }
-        return alphabet;
-    }
 
     private static string ToScript(string value,IReadOnlyDictionary<char,char> map,char fallback)
     {

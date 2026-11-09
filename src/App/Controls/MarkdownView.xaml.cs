@@ -149,20 +149,10 @@ public sealed partial class MarkdownView : UserControl
         var plainText=GetLeafText(leaf).Trim();
         if(mathFragments.TryGetValue(plainText,out var displayMath)&&displayMath.IsDisplay)
         {
-            // A display formula deserves its own visual rhythm.  Cambria Math
-            // gives the Unicode output proper glyph metrics (fractions,
-            // scripts and blackboard letters) while the extra leading keeps it
-            // from colliding with the surrounding Markdown.
-            var paragraph=CreateParagraph(Math.Max(size+4,FontSize+4),Microsoft.UI.Text.FontWeights.SemiBold,new Thickness(12,10,12,16));
+            var paragraph=CreateParagraph(Math.Max(size+2,FontSize+2),Microsoft.UI.Text.FontWeights.SemiBold,new Thickness(0,5,0,12));
             paragraph.TextAlignment=TextAlignment.Center;
             paragraph.FontFamily=new FontFamily("Cambria Math, Segoe UI");
-            paragraph.LineHeight=Math.Max(30,paragraph.FontSize*1.65);
-            paragraph.Inlines.Add(new Run
-            {
-                Text=MarkdownMathNormalizer.FormatLatex(displayMath.Latex),
-                FontFamily=new FontFamily("Cambria Math, Segoe UI"),
-                FontWeight=Microsoft.UI.Text.FontWeights.SemiBold
-            });
+            paragraph.Inlines.Add(new Run{Text=MarkdownMathNormalizer.FormatLatex(displayMath.Latex)});
             DocumentText.Blocks.Add(paragraph);
             return;
         }
@@ -371,7 +361,6 @@ public sealed partial class MarkdownView : UserControl
             {
                 Text=MarkdownMathNormalizer.FormatLatex(nextFragment.Latex),
                 FontFamily=new FontFamily("Cambria Math, Segoe UI"),
-                FontSize=Math.Max(12,Math.Min(20,FontSize+1)),
                 FontWeight=Microsoft.UI.Text.FontWeights.SemiBold
             });
             position=nextIndex+nextFragment.Marker.Length;

@@ -76,7 +76,7 @@ public sealed class CanvasTool : ITool
 
     public ToolDescriptor Descriptor { get; } = new(
         "canvas",
-        "Display substantial Markdown or source code in a dedicated native canvas card with its own title and copy action. Use for standalone documents, plans, specifications, long formatted Markdown, scripts, Python examples, configuration, or code that should be visually separate from the conversational answer. In Markdown, write mathematics with LaTeX delimiters such as $...$, $$...$$, \\( ... \\), or \\[ ... \\] so it is rendered as readable math.",
+        "Display substantial Markdown or source code in a dedicated native canvas card with its own title and copy action. Use for standalone documents, plans, specifications, long formatted Markdown, scripts, Python examples, configuration, or code that should be visually separate from the conversational answer.",
         Schema,
         ToolRisk.Safe,
         []);
