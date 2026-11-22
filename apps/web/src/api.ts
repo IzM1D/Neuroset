@@ -23,6 +23,10 @@ function providerError(data: unknown): string | undefined {
   return 'API вернул ошибку.';
 }
 
+export class ProviderRequestError extends Error {
+  constructor(readonly status: number, message: string) { super(message); }
+}
+
 export async function checkResponse(response: Response) {
   if (response.ok) return;
   const text = await response.text();
@@ -32,7 +36,7 @@ export async function checkResponse(response: Response) {
     401: 'Проверьте API-ключ в настройках.', 403: 'Нет доступа к API или выбранной модели.',
     404: 'Проверьте адрес API и название модели.', 429: 'Лимит запросов или баланс исчерпан. Попробуйте позже.',
   };
-  throw new Error(`HTTP ${response.status}: ${detail || hints[response.status] || 'Сервер не смог обработать запрос.'}`);
+  throw new ProviderRequestError(response.status, `HTTP ${response.status}: ${detail || hints[response.status] || 'Сервер не смог обработать запрос.'}`);
 }
 
 export async function discoverModels(settings: Settings, signal: AbortSignal): Promise<string[]> {
@@ -78,14 +82,15 @@ export async function* sseData(body: ReadableStream<Uint8Array>): AsyncGenerator
 }
 
 export async function requestCompletion(settings: Settings, messages: ApiMessage[], signal: AbortSignal, onText: (text: string) => void,
-  tools: ToolDefinition[] = [], forceTool?: string) {
+  tools: ToolDefinition[] = [], forceTool?: string, reasoningEffort?: 'xhigh' | 'high') {
   const body = {
     model: settings.model.trim(),
     messages,
     ...(tools.length ? { tools, tool_choice: forceTool ? { type: 'function', function: { name: forceTool } } : 'auto' } : {}),
     stream: settings.stream,
     ...(settings.temperature !== '' ? { temperature: Number(settings.temperature) } : {}),
-    ...(settings.maxTokens !== '' ? { max_tokens: Number(settings.maxTokens) } : {}),
+    ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
+    ...(!settings.ultraEffort && settings.maxTokens !== '' ? { max_tokens: Number(settings.maxTokens) } : {}),
   };
   const response = await fetch(endpoint(settings.baseUrl), {
     method: 'POST', headers: headers(settings.apiKey), body: JSON.stringify(body), signal,
@@ -93,6 +98,7 @@ export async function requestCompletion(settings: Settings, messages: ApiMessage
   await checkResponse(response);
   let receivedText = false;
   let content = '';
+  let finishReason: string | undefined;
   const calls = new Map<number, ToolCall>();
   const acceptCalls = (items: unknown, streaming: boolean) => {
     if (!Array.isArray(items)) return;
@@ -123,7 +129,7 @@ export async function requestCompletion(settings: Settings, messages: ApiMessage
       accept(choice?.delta?.content);
       accept(choice?.delta?.refusal);
       acceptCalls(choice?.delta?.tool_calls, true);
-      if (choice?.finish_reason != null) finished = true;
+      if (choice?.finish_reason != null) { finishReason = choice.finish_reason; finished = true; }
     }
     if (!finished) throw new Error('Поток ответа прервался. Попробуйте повторить запрос.');
   } else {
@@ -133,13 +139,15 @@ export async function requestCompletion(settings: Settings, messages: ApiMessage
     accept(data.choices?.[0]?.message?.content);
     accept(data.choices?.[0]?.message?.refusal);
     acceptCalls(data.choices?.[0]?.message?.tool_calls, false);
+    finishReason = data.choices?.[0]?.finish_reason;
   }
   if (!receivedText && !calls.size) throw new Error('Модель вернула пустой ответ. Проверьте модель и параметры генерации.');
   const toolCalls = [...calls.entries()].sort(([a], [b]) => a - b).map(([, call]) => call);
+  if (toolCalls.length && finishReason === 'length') throw new Error('API обрезал вызов инструмента по длине. Действие не выполнено.');
   if (toolCalls.some(call => !call.id || !call.function.name) || new Set(toolCalls.map(call => call.id)).size !== toolCalls.length) {
     throw new Error('API вернул неполный вызов инструмента.');
   }
-  return { role: 'assistant' as const, content: content || null, ...(toolCalls.length ? { tool_calls: toolCalls } : {}) };
+  return { finishReason, role: 'assistant' as const, content: content || null, ...(toolCalls.length ? { tool_calls: toolCalls } : {}) };
 }
 
 export async function completeChat(settings: Settings, messages: Message[], signal: AbortSignal, onText: (text: string) => void) {

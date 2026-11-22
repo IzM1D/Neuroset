@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, BookOpen, Check, ChevronDown, Code2, Download, Globe, ImagePlus, Lightbulb, Menu, MessageCircle, Moon, Paperclip, PanelLeftClose, Pencil, PenLine, Plus, Search, Settings2, Sparkles, Square, Sun, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, BookOpen, Brain, Check, ChevronDown, Code2, Download, Globe, ImagePlus, Lightbulb, Menu, MessageCircle, Moon, Paperclip, PanelLeftClose, Pencil, PenLine, Plus, Search, Settings2, Sparkles, Square, Sun, Trash2, X } from 'lucide-react';
 import { discoverModels, friendlyError } from './api';
 import { runConversation } from './conversation';
 import { isImageModel, selectImageModel } from './images';
@@ -26,6 +26,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState<{ chatId: string; messageId: string } | null>(null);
+  const [runStatus, setRunStatus] = useState('');
   const [toast, setToast] = useState('');
   const [storageError, setStorageError] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -183,6 +184,7 @@ export default function App() {
     void removeImages(chatImageIds(activeChat).filter(id => !retained.has(id))).catch(() => {});
     controller.current = abort;
     setBusy({ chatId, messageId: response.id });
+    setRunStatus('');
     follow.current = true;
     updateChat(chatId, chat => ({ ...chat, messages: [...history, response], draft: '', draftAttachments: [], updatedAt: Date.now(),
       title: chat.messages.length === 0 ? (history[0]?.content.slice(0, 55) || history[0]?.attachments?.[0]?.name.slice(0, 55) || 'Новый чат') : chat.title }));
@@ -192,7 +194,9 @@ export default function App() {
       messages: chat.messages.map(message => message.id === response.id ? { ...message, ...patch } : message),
     }));
     try {
-      await runConversation(settings, history, AbortSignal.any([abort.signal, AbortSignal.timeout(600_000)]), {
+      const signal = settings.ultraEffort ? abort.signal : AbortSignal.any([abort.signal, AbortSignal.timeout(600_000)]);
+      await runConversation(settings, history, signal, {
+        onStatus: settings.ultraEffort ? setRunStatus : undefined,
         onText: text => {
           content += text;
           if (!pendingFrame) pendingFrame = requestAnimationFrame(() => { pendingFrame = 0; updateResponse({ content }); });
@@ -208,7 +212,7 @@ export default function App() {
       updateResponse({ content });
     } catch (cause) {
       updateResponse({ content, ...(abort.signal.aborted ? { interrupted: true } : {
-        error: cause instanceof DOMException && cause.name === 'TimeoutError' ? 'Время ожидания истекло (10 минут). Полученные результаты сохранены.' : friendlyError(cause),
+        error: !settings.ultraEffort && cause instanceof DOMException && cause.name === 'TimeoutError' ? 'Время ожидания истекло (10 минут). Полученные результаты сохранены.' : friendlyError(cause),
       }) });
     } finally {
       cancelAnimationFrame(pendingFrame);
@@ -311,7 +315,7 @@ export default function App() {
           follow.current = element.scrollHeight - element.scrollTop - element.clientHeight < 90;
           setShowScroll(!follow.current);
         }}><div className="messages">
-          {activeChat.messages.map((message, index) => <MessageView key={message.id} message={message} busy={!!busy || uploading} generating={busy?.messageId === message.id} canRetry={message.role === 'assistant' && index === activeChat.messages.length - 1} onRetry={() => retry(index)} onEdit={() => {
+          {activeChat.messages.map((message, index) => <MessageView key={message.id} message={message} busy={!!busy || uploading} generating={busy?.messageId === message.id} status={runStatus} canRetry={message.role === 'assistant' && index === activeChat.messages.length - 1} onRetry={() => retry(index)} onEdit={() => {
             setEditingId(message.id);
             replaceDraftAttachments(message.attachments || []);
             updateChat(activeChat.id, chat => ({ ...chat, draft: message.content }));
@@ -330,6 +334,7 @@ export default function App() {
             }} />
             <div className="composer-bottom"><button className="composer-model" type="button" onClick={() => setSettingsOpen(true)}><span className={`connection-dot ${settings.model ? 'configured' : ''}`} /><span>{settings.model || 'Подключить модель'}</span><ChevronDown size={13} /></button>
               <div className="composer-tools">
+                <button type="button" className={`icon-button ${settings.ultraEffort ? 'tool-enabled image-active' : ''}`} aria-label="Ультра-размышления" aria-pressed={settings.ultraEffort} title="Ультра-размышления · длительное исследование и написание документов" disabled={!!busy} onClick={() => persistSettings({ ...settings, ultraEffort: !settings.ultraEffort })}><Brain size={18} /></button>
                 <button type="button" className="icon-button" aria-label="Прикрепить изображения" title="Прикрепить изображения · PNG, JPEG, WebP, GIF · до 10 МБ" disabled={!!busy || uploading} onClick={() => fileInput.current?.click()}><Paperclip size={18} /></button>
                 <button type="button" className={`icon-button ${settings.webEnabled ? 'tool-enabled' : ''}`} aria-label="Интернет" aria-pressed={settings.webEnabled} title={settings.searchKey ? 'Поиск и чтение сайтов' : 'Чтение сайтов · поиск настраивается в настройках'} disabled={!!busy} onClick={() => persistSettings({ ...settings, webEnabled: !settings.webEnabled })}><Globe size={18} /></button>
                 <button type="button" className={`icon-button ${settings.pythonEnabled ? 'tool-enabled' : ''}`} aria-label="Python" aria-pressed={settings.pythonEnabled} title="Расчёты и графики на Python" disabled={!!busy} onClick={() => persistSettings({ ...settings, pythonEnabled: !settings.pythonEnabled })}><Code2 size={18} /></button>

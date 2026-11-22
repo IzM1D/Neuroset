@@ -27,10 +27,11 @@ function CodeBlock({ children, ...props }: ComponentPropsWithoutRef<'pre'>) {
   </div>;
 }
 
-export default function MessageView({ message, busy, generating, canRetry, onEdit, onRetry, onCopyError }: {
+export default function MessageView({ message, busy, generating, status, canRetry, onEdit, onRetry, onCopyError }: {
   message: Message;
   busy: boolean;
   generating: boolean;
+  status: string;
   canRetry: boolean;
   onEdit: () => void;
   onRetry: () => void;
@@ -49,7 +50,7 @@ export default function MessageView({ message, busy, generating, canRetry, onEdi
           img: ({ alt, src }) => <a href={src} target="_blank" rel="noopener noreferrer">{alt || 'Открыть изображение'}</a>,
         }}>{message.content}</ReactMarkdown></div>}
       {message.images?.map(image => <ImageCard key={image.id} image={image} />)}
-      {generating && <div className="thinking" role="status"><span /><span /><span /><span className="sr-only">Модель готовит ответ</span></div>}
+      {generating && <div className="thinking" role="status"><span /><span /><span />{status ? <small>{status}</small> : <span className="sr-only">Модель готовит ответ</span>}</div>}
       {message.error && <p className="error-notice" role="alert">{message.error}</p>}
       {message.interrupted && !generating && <p className="interrupted">Генерация остановлена</p>}
     </div>

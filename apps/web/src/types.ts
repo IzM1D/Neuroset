@@ -7,6 +7,7 @@ export interface Settings {
   temperature: string;
   maxTokens: string;
   stream: boolean;
+  ultraEffort: boolean;
   theme: 'dark' | 'light';
   webEnabled: boolean;
   pythonEnabled: boolean;
@@ -77,6 +78,7 @@ export const defaultSettings: Settings = {
   temperature: '',
   maxTokens: '',
   stream: true,
+  ultraEffort: false,
   theme: 'dark',
   webEnabled: true,
   pythonEnabled: true,

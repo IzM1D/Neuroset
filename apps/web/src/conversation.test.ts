@@ -18,6 +18,64 @@ function callbacks() {
 }
 
 describe('tool conversation', () => {
+  it('runs twelve ultra research rounds and joins JSON and streamed continuations into one answer', async () => {
+    let round = 0;
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body));
+      expect(body.reasoning_effort).toBe('xhigh');
+      expect(body.max_tokens).toBeUndefined();
+      if (++round <= 12) {
+        expect(body.tools.map((tool: { function: { name: string } }) => tool.function.name)).toContain('web_search');
+        return response({ tool_calls: [call('web_search', 'search-' + round)] });
+      }
+      if (round === 13) return Response.json({ choices: [{ message: { content: 'Первая ' }, finish_reason: 'length' }] });
+      if (round === 14) return new Response('data: {"choices":[{"delta":{"content":"и "},"finish_reason":"length"}]}\n\ndata: [DONE]\n\n', { headers: { 'Content-Type': 'text/event-stream' } });
+      return response({ content: 'вторая.' });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    vi.mocked(executeTool).mockResolvedValue({ text: 'Источник' });
+    const events = callbacks();
+    await runConversation({ ...defaultSettings, searchKey: 'test', ultraEffort: true, maxTokens: '1' }, [], new AbortController().signal, events);
+    expect(executeTool).toHaveBeenCalledTimes(12);
+    expect(events.onText.mock.calls.flat().join('')).toBe('Первая и вторая.');
+    expect(events.protocols.at(-1)?.slice(24)).toEqual([{ role: 'assistant', content: 'Первая и вторая.' }]);
+  });
+
+  it('compacts a long draft while retaining the exact ending and the complete visible answer', async () => {
+    const draft = 'текст '.repeat(8500);
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const { messages } = JSON.parse(String(init.body));
+      if (messages[0].content.startsWith('Update concise working notes')) return response({ content: 'План и источники' });
+      if (messages.length === 2) return Response.json({ choices: [{ message: { content: draft }, finish_reason: 'length' }] });
+      expect(messages[1].content).toBe('Документ');
+      expect(messages.at(-2).content).toContain('План и источники');
+      expect(messages.at(-2).content).toContain(draft.slice(-3000));
+      expect(JSON.stringify(messages).length).toBeLessThan(draft.length);
+      return response({ content: 'Конец.' });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const events = callbacks();
+    await runConversation({ ...defaultSettings, ultraEffort: true }, [{ id: 'u', role: 'user', content: 'Документ' }], new AbortController().signal, events);
+    expect(events.protocols.at(-1)).toEqual([{ role: 'assistant', content: draft + 'Конец.' }]);
+  });
+
+  it('falls back on effort rejection and keeps a cancelled partial answer', async () => {
+    const abort = new AbortController();
+    const efforts: (string | undefined)[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
+      const { reasoning_effort } = JSON.parse(String(init.body));
+      efforts.push(reasoning_effort);
+      if (reasoning_effort) return Response.json({ error: { message: 'Unsupported reasoning_effort' } }, { status: 400 });
+      if (efforts.length === 3) return Response.json({ choices: [{ message: { content: 'Черновик' }, finish_reason: 'length' }] });
+      abort.abort();
+      throw abort.signal.reason;
+    }));
+    const events = callbacks();
+    await expect(runConversation({ ...defaultSettings, ultraEffort: true }, [], abort.signal, events)).rejects.toThrow();
+    expect(efforts).toEqual(['xhigh', 'high', undefined, undefined]);
+    expect(events.protocols.at(-1)).toEqual([{ role: 'assistant', content: 'Черновик' }]);
+  });
+
   it('assembles function names and arguments split across SSE chunks', async () => {
     const events = [
       { tool_calls: [{ index: 0, id: 'abc', function: { name: 'current_', arguments: '{"time' } }] },

@@ -10,6 +10,26 @@ async function configure(page: Page) {
   await page.getByRole('button', { name: 'Сохранить настройки' }).click();
 }
 
+test('ultra effort persists and continues a truncated document in the same message', async ({ page }) => {
+  await configure(page);
+  const toggle = page.getByRole('button', { name: 'Ультра-размышления' });
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  await toggle.click();
+  await page.reload();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  let requests = 0;
+  await page.route('https://api.example.test/v1/chat/completions', route => {
+    expect(route.request().postDataJSON().reasoning_effort).toBe('xhigh');
+    const first = ++requests === 1;
+    return route.fulfill({ json: { choices: [{ message: { content: first ? 'Первая ' : 'глава.' }, finish_reason: first ? 'length' : 'stop' }] } });
+  });
+  await page.getByRole('textbox', { name: 'Сообщение', exact: true }).fill('Составь документ');
+  await page.getByRole('button', { name: 'Отправить сообщение' }).click();
+  await expect(page.locator('.message-assistant .markdown')).toHaveText('Первая глава.');
+  await expect(page.getByRole('button', { name: 'Повторить ответ' })).toBeEnabled();
+  expect(requests).toBe(2);
+});
+
 test('streaming, context, persistence, editing, retry, Markdown and copy', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   const requests: { messages: { role: string; content: string }[] }[] = [];
