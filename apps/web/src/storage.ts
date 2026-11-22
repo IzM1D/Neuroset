@@ -5,8 +5,7 @@ const prefix = 'neuroset.web.v1.';
 function validAttachments(value: unknown): boolean {
   return value === undefined || (Array.isArray(value) && value.every(image =>
     image && typeof image.id === 'string' && typeof image.name === 'string' &&
-    ['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(image.mediaType) &&
-    Number.isFinite(image.sizeBytes) && image.sizeBytes > 0));
+    typeof image.mediaType === 'string' && Number.isSafeInteger(image.sizeBytes) && image.sizeBytes >= 0));
 }
 
 export function loadSettings(): Settings {

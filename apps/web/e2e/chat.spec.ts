@@ -165,9 +165,9 @@ test('image attachments persist, reach the API without text, survive retry and e
     await route.fulfill({ json: { choices: [{ message: { content: 'Вижу изображение.' } }] } });
   });
   await configure(page);
-  const picker = page.getByLabel('Загрузить изображения');
+  const picker = page.getByLabel('Загрузить файлы');
   const fileChooser = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: 'Прикрепить изображения', exact: true }).click();
+  await page.getByRole('button', { name: 'Прикрепить файлы', exact: true }).click();
   await (await fileChooser).setFiles([imageFile('photo.png'), imageFile('remove.png')]);
   await expect(page.locator('.composer .attachments img')).toHaveCount(2);
   await page.getByRole('button', { name: 'Убрать remove.png' }).click();
@@ -239,26 +239,49 @@ test('paste and drop attach images, drafts stay in their chat, and mobile contro
   await expect(page.locator('.composer .attachments img')).toHaveCount(2);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: 'Скрыть боковую панель' }).click();
-  await expect(page.getByRole('button', { name: 'Прикрепить изображения', exact: true })).toBeInViewport();
+  await expect(page.getByRole('button', { name: 'Прикрепить файлы', exact: true })).toBeInViewport();
   await expect(page.getByRole('button', { name: 'Отправить сообщение' })).toBeInViewport();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test('attachment validation rejects unsupported and damaged files', async ({ page }) => {
+test('files of any type keep their names and bytes across reload, rejection and retry', async ({ page }) => {
   await configure(page);
-  const picker = page.getByLabel('Загрузить изображения');
-  await picker.setInputFiles({ name: 'unsafe.svg', mimeType: 'image/svg+xml', buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>') });
-  await expect(page.getByRole('status')).toContainText('поддерживаются PNG, JPEG, WebP и GIF');
-  await picker.setInputFiles({ name: 'broken.png', mimeType: 'image/png', buffer: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]) });
-  await expect(page.getByRole('status')).toContainText('Не удалось прочитать изображение');
-  await expect(page.getByRole('button', { name: 'Отправить сообщение' })).toBeDisabled();
+  const files = [
+    { name: 'заметки.txt', mimeType: 'text/plain', buffer: Buffer.from('Пример текста') },
+    { name: 'report.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7') },
+    { name: 'archive.zip', mimeType: 'application/zip', buffer: Buffer.from('504b0506' + '00'.repeat(18), 'hex') },
+    { name: 'unknown', mimeType: 'application/octet-stream', buffer: Buffer.from([0, 255, 1]) },
+    { name: 'empty.txt', mimeType: 'text/plain', buffer: Buffer.alloc(0) },
+    { name: 'drawing.svg', mimeType: 'image/svg+xml', buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>') },
+  ];
+  const picker = page.getByLabel('Загрузить файлы');
+  expect(await picker.getAttribute('accept')).toBeNull();
+  await picker.setInputFiles(files);
+  await expect(page.locator('.composer a[download]')).toHaveCount(files.length);
+  await page.reload();
+  await expect(page.locator('.composer a[download]')).toHaveCount(files.length);
+  let attempts = 0;
+  await page.route('https://api.example.test/v1/chat/completions', route => {
+    const user = route.request().postDataJSON().messages.find((message: { role: string }) => message.role === 'user');
+    expect(user.content).toEqual(files.map(file => ({
+      type: 'file', file: { filename: file.name, file_data: `data:${file.mimeType};base64,${file.buffer.toString('base64')}` },
+    })));
+    if (++attempts === 1) return route.fulfill({ status: 415, json: { error: { message: 'Unsupported archive format' } } });
+    return route.fulfill({ json: { choices: [{ message: { content: 'Не могу открыть archive.zip.' }, finish_reason: 'stop' }] } });
+  });
+  await page.getByRole('button', { name: 'Отправить сообщение' }).click();
+  await expect(page.locator('.message-assistant')).toContainText('HTTP 415: Unsupported archive format');
+  await page.reload();
+  await expect(page.locator('.message-user a[download]')).toHaveCount(files.length);
+  await page.getByRole('button', { name: 'Повторить ответ' }).click();
+  await expect(page.locator('.message-assistant')).toContainText('Не могу открыть archive.zip.');
 });
 
 test('large image batches survive reload and surface the provider rejection', async ({ page }) => {
   await configure(page);
   const files = [1, 2, 3, 4, 5].map(index => imageFile(`${index}.png`));
   for (const file of files.slice(0, 2)) file.buffer = Buffer.concat([file.buffer, Buffer.alloc(10 * 1024 * 1024)]);
-  await page.getByLabel('Загрузить изображения').setInputFiles(files);
+  await page.getByLabel('Загрузить файлы').setInputFiles(files);
   await expect(page.locator('.composer .attachments img')).toHaveCount(5);
   await page.reload();
   await expect(page.locator('.composer .attachments img')).toHaveCount(5);

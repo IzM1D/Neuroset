@@ -5,7 +5,7 @@ function openDatabase(): Promise<IDBDatabase> {
     const request = indexedDB.open('neuroset.web.assets', 1);
     request.onupgradeneeded = () => request.result.createObjectStore('images');
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(new Error('Не удалось открыть хранилище изображений.'));
+    request.onerror = () => reject(new Error('Не удалось открыть хранилище файлов.'));
   });
 }
 
@@ -22,7 +22,7 @@ export async function storeImage(blob: Blob, id: string): Promise<void> {
       const transaction = database.transaction('images', 'readwrite');
       transaction.objectStore('images').put(blob, id);
       transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(new Error('Не удалось сохранить изображение: хранилище браузера заполнено или недоступно.'));
+      transaction.onerror = () => reject(new Error('Не удалось сохранить файл: хранилище браузера заполнено или недоступно.'));
       transaction.onabort = transaction.onerror;
     });
   } finally { database.close(); }

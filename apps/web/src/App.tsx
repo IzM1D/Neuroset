@@ -4,12 +4,12 @@ import { discoverModels, friendlyError } from './api';
 import { runConversation } from './conversation';
 import { isImageModel, selectImageModel } from './images';
 import { removeImages } from './assets';
-import { chatImageIds, imageAccept, importAttachment } from './attachments';
+import { chatImageIds, importAttachment } from './attachments';
 import AttachmentList from './AttachmentList';
 import MessageView from './MessageView';
 import SettingsDialog from './SettingsDialog';
 import { loadChats, loadSettings, saveChats, saveSettings } from './storage';
-import { createChat, type Chat, type ImageAttachment, type Message, type Settings } from './types';
+import { createChat, type Chat, type FileAttachment, type Message, type Settings } from './types';
 
 const suggestions = [
   { icon: PenLine, title: 'Написать текст', description: 'Найти нужные слова', prompt: 'Помоги написать текст. Сначала уточни тему, аудиторию и желаемый стиль.' },
@@ -123,12 +123,12 @@ export default function App() {
 
   const attachFiles = useCallback(async (files: File[]) => {
     if (!files.length) return;
-    if (controller.current || busy) { setToast('Дождитесь завершения ответа или остановите его, затем вставьте изображение.'); return; }
-    if (importing.current) { setToast('Дождитесь добавления предыдущих изображений.'); return; }
+    if (controller.current || busy) { setToast('Дождитесь завершения ответа или остановите его, затем прикрепите файл.'); return; }
+    if (importing.current) { setToast('Дождитесь добавления предыдущих файлов.'); return; }
     importing.current = true;
     setUploading(true);
     const chatId = activeChat.id;
-    const added: ImageAttachment[] = [];
+    const added: FileAttachment[] = [];
     const errors: string[] = [];
     try {
       for (const file of files) {
@@ -150,7 +150,6 @@ export default function App() {
       const target = event.target instanceof Element ? event.target : null;
       const editor = target?.closest('input, textarea, [contenteditable]:not([contenteditable="false"]), [role="textbox"]');
       if (editor && editor !== textarea.current) return;
-      // Copied files may have no MIME type. Validate their bytes during import.
       const files = Array.from(event.clipboardData.files);
       if (!files.length) {
         for (const item of Array.from(event.clipboardData.items)) {
@@ -167,7 +166,7 @@ export default function App() {
     return () => document.removeEventListener('paste', paste);
   }, [attachFiles, settingsOpen, deleteId]);
 
-  function replaceDraftAttachments(attachments: ImageAttachment[]) {
+  function replaceDraftAttachments(attachments: FileAttachment[]) {
     const next = { ...activeChat, draftAttachments: attachments };
     const retained = new Set(chatImageIds(next));
     void removeImages((activeChat.draftAttachments || []).map(image => image.id).filter(id => !retained.has(id))).catch(() => {});
@@ -299,7 +298,7 @@ export default function App() {
       event.preventDefault(); dragDepth.current = 0; setDragging(false);
       void attachFiles(Array.from(event.dataTransfer.files));
     }}>
-      {dragging && <div className="image-drop-hint"><Paperclip size={28} /><span>Перетащите изображения сюда</span><small>PNG, JPEG, WebP, GIF</small></div>}
+      {dragging && <div className="image-drop-hint"><Paperclip size={28} /><span>Перетащите файлы сюда</span></div>}
       <header className="topbar"><div className="topbar-left">{!sidebarOpen && <button className="icon-button" title="Открыть меню" aria-label="Открыть меню" onClick={() => setSidebarOpen(true)}><Menu size={21} /></button>}<button className="model-selector" onClick={() => setSettingsOpen(true)}><span>{settings.model || 'Neuroset'}</span><ChevronDown size={16} /></button><span className="topbar-tag">{settings.model ? 'Чат' : 'Ваш AI-помощник'}</span></div>
         <div className="topbar-actions">{!isEmpty && <button className="icon-button" title="Скачать чат" aria-label="Скачать чат" onClick={exportChat}><Download size={18} /></button>}<button className="icon-button" title="Новый чат" aria-label="Новый чат" onClick={newChat}><PenLine size={19} /></button></div>
       </header>
@@ -327,14 +326,14 @@ export default function App() {
           {editingId && <div className="edit-notice"><span>Редактирование · последующие ответы будут заменены</span><button className="icon-button" aria-label="Отменить редактирование" disabled={uploading} onClick={() => { setEditingId(null); replaceDraftAttachments([]); updateChat(activeChat.id, chat => ({ ...chat, draft: '' })); }}><X size={16} /></button></div>}
           <form className="composer" onSubmit={event => { event.preventDefault(); send(); }}>
             {!!activeChat.draftAttachments?.length && <AttachmentList attachments={activeChat.draftAttachments} disabled={!!busy || uploading} onRemove={id => replaceDraftAttachments((activeChat.draftAttachments || []).filter(image => image.id !== id))} />}
-            <input ref={fileInput} type="file" accept={imageAccept} multiple hidden aria-label="Загрузить изображения" onChange={event => { const files = Array.from(event.target.files || []); event.target.value = ''; void attachFiles(files); }} />
+            <input ref={fileInput} type="file" multiple hidden aria-label="Загрузить файлы" onChange={event => { const files = Array.from(event.target.files || []); event.target.value = ''; void attachFiles(files); }} />
             <textarea ref={textarea} id="message-input" aria-label="Сообщение" rows={1} placeholder="Спросите о чём угодно…" value={activeChat.draft} onChange={event => updateChat(activeChat.id, chat => ({ ...chat, draft: event.target.value }))} onKeyDown={event => {
               if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && !window.matchMedia('(pointer: coarse)').matches) { event.preventDefault(); send(); }
             }} />
             <div className="composer-bottom"><button className="composer-model" type="button" onClick={() => setSettingsOpen(true)}><span className={`connection-dot ${settings.model ? 'configured' : ''}`} /><span>{settings.model || 'Подключить модель'}</span><ChevronDown size={13} /></button>
               <div className="composer-tools">
                 <button type="button" className={`icon-button ${settings.ultraEffort ? 'tool-enabled image-active' : ''}`} aria-label="Ультра-размышления" aria-pressed={settings.ultraEffort} title="Ультра-размышления · длительное исследование и написание документов" disabled={!!busy} onClick={() => persistSettings({ ...settings, ultraEffort: !settings.ultraEffort })}><Brain size={18} /></button>
-                <button type="button" className="icon-button" aria-label="Прикрепить изображения" title="Прикрепить изображения · PNG, JPEG, WebP, GIF" disabled={!!busy || uploading} onClick={() => fileInput.current?.click()}><Paperclip size={18} /></button>
+                <button type="button" className="icon-button" aria-label="Прикрепить файлы" title="Прикрепить файлы" disabled={!!busy || uploading} onClick={() => fileInput.current?.click()}><Paperclip size={18} /></button>
                 <button type="button" className={`icon-button ${settings.webEnabled ? 'tool-enabled' : ''}`} aria-label="Интернет" aria-pressed={settings.webEnabled} title={settings.searchKey ? 'Поиск и чтение сайтов' : 'Чтение сайтов · поиск настраивается в настройках'} disabled={!!busy} onClick={() => persistSettings({ ...settings, webEnabled: !settings.webEnabled })}><Globe size={18} /></button>
                 <button type="button" className={`icon-button ${settings.pythonEnabled ? 'tool-enabled' : ''}`} aria-label="Python" aria-pressed={settings.pythonEnabled} title="Расчёты и графики на Python" disabled={!!busy} onClick={() => persistSettings({ ...settings, pythonEnabled: !settings.pythonEnabled })}><Code2 size={18} /></button>
                 <button type="button" className={`icon-button ${imageMode ? 'tool-enabled image-active' : ''}`} aria-label="Создать изображение" aria-pressed={imageMode} title={imageModel ? `Создать изображение · ${imageModel}` : 'Настроить модель изображений'} disabled={!!busy} onClick={() => { if (imageModel) setImageMode(!imageMode); else { setSettingsOpen(true); setToast('Укажите GPT Image модель в разделе «Инструменты».'); } }}><ImagePlus size={18} /></button>
@@ -342,7 +341,7 @@ export default function App() {
               {busy ? <button className="send-button stop-button" type="button" title="Остановить ответ" aria-label="Остановить ответ" onClick={() => controller.current?.abort()}><Square size={15} fill="currentColor" /></button> : <button className="send-button" type="submit" title="Отправить сообщение" aria-label="Отправить сообщение" disabled={uploading || (!activeChat.draft.trim() && !activeChat.draftAttachments?.length)}><ArrowUp size={20} strokeWidth={2.4} /></button>}
             </div>
           </form>
-          {uploading && <p className="image-mode-note" role="status">Добавление изображений…</p>}
+          {uploading && <p className="image-mode-note" role="status">Добавление файлов…</p>}
           {imageMode && <p className="image-mode-note">Создание изображения · {imageModel} · для следующего сообщения</p>}
           {isEmpty && <div className="suggestions">{suggestions.map(({ icon: Icon, title, description, prompt }) => <button key={title} onClick={() => { updateChat(activeChat.id, chat => ({ ...chat, draft: prompt })); textarea.current?.focus(); }}><Icon size={19} /><strong>{title}</strong><span>{description}</span></button>)}</div>}
           <p className="composer-hint">{isEmpty ? 'Ваши вопросы — начало чего-то интересного.' : 'Neuroset может ошибаться. Проверяйте важную информацию.'}<span className="keyboard-hint">{isEmpty ? '' : 'Shift + Enter — новая строка'}</span></p>

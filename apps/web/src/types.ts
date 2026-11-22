@@ -21,7 +21,9 @@ export interface ToolCall {
   function: { name: string; arguments: string };
 }
 
-export type ApiContentPart = { type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } };
+export type ApiContentPart = { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string } }
+  | { type: 'file'; file: { filename: string; file_data: string } };
 
 export interface ApiMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
@@ -37,7 +39,7 @@ export interface ToolDefinition {
 
 export interface Source { title: string; url: string }
 export interface ImageArtifact { id: string; title: string; model: string; kind: 'image' | 'plot' }
-export interface ImageAttachment { id: string; name: string; mediaType: string; sizeBytes: number }
+export interface FileAttachment { id: string; name: string; mediaType: string; sizeBytes: number }
 export interface ToolStep {
   id: string;
   name: string;
@@ -56,7 +58,7 @@ export interface Message {
   interrupted?: boolean;
   steps?: ToolStep[];
   images?: ImageArtifact[];
-  attachments?: ImageAttachment[];
+  attachments?: FileAttachment[];
   protocol?: ApiMessage[];
 }
 
@@ -66,7 +68,7 @@ export interface Chat {
   updatedAt: number;
   messages: Message[];
   draft: string;
-  draftAttachments?: ImageAttachment[];
+  draftAttachments?: FileAttachment[];
 }
 
 export const defaultSettings: Settings = {
