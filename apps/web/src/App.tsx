@@ -128,12 +128,11 @@ export default function App() {
     importing.current = true;
     setUploading(true);
     const chatId = activeChat.id;
-    const existing = activeChat.draftAttachments || [];
     const added: ImageAttachment[] = [];
     const errors: string[] = [];
     try {
       for (const file of files) {
-        try { added.push(await importAttachment(file, [...existing, ...added])); }
+        try { added.push(await importAttachment(file)); }
         catch (cause) { errors.push(friendlyError(cause)); }
       }
       if (added.length) setChats(previous => previous.map(chat => chat.id === chatId ? { ...chat, draftAttachments: [...(chat.draftAttachments || []), ...added] } : chat));
@@ -143,7 +142,7 @@ export default function App() {
       setUploading(false);
       textarea.current?.focus();
     }
-  }, [activeChat.id, activeChat.draftAttachments, busy]);
+  }, [activeChat.id, busy]);
 
   useEffect(() => {
     const paste = (event: ClipboardEvent) => {
@@ -300,7 +299,7 @@ export default function App() {
       event.preventDefault(); dragDepth.current = 0; setDragging(false);
       void attachFiles(Array.from(event.dataTransfer.files));
     }}>
-      {dragging && <div className="image-drop-hint"><Paperclip size={28} /><span>Перетащите изображения сюда</span><small>PNG, JPEG, WebP, GIF · до 10 МБ · до 4 изображений</small></div>}
+      {dragging && <div className="image-drop-hint"><Paperclip size={28} /><span>Перетащите изображения сюда</span><small>PNG, JPEG, WebP, GIF</small></div>}
       <header className="topbar"><div className="topbar-left">{!sidebarOpen && <button className="icon-button" title="Открыть меню" aria-label="Открыть меню" onClick={() => setSidebarOpen(true)}><Menu size={21} /></button>}<button className="model-selector" onClick={() => setSettingsOpen(true)}><span>{settings.model || 'Neuroset'}</span><ChevronDown size={16} /></button><span className="topbar-tag">{settings.model ? 'Чат' : 'Ваш AI-помощник'}</span></div>
         <div className="topbar-actions">{!isEmpty && <button className="icon-button" title="Скачать чат" aria-label="Скачать чат" onClick={exportChat}><Download size={18} /></button>}<button className="icon-button" title="Новый чат" aria-label="Новый чат" onClick={newChat}><PenLine size={19} /></button></div>
       </header>
@@ -335,7 +334,7 @@ export default function App() {
             <div className="composer-bottom"><button className="composer-model" type="button" onClick={() => setSettingsOpen(true)}><span className={`connection-dot ${settings.model ? 'configured' : ''}`} /><span>{settings.model || 'Подключить модель'}</span><ChevronDown size={13} /></button>
               <div className="composer-tools">
                 <button type="button" className={`icon-button ${settings.ultraEffort ? 'tool-enabled image-active' : ''}`} aria-label="Ультра-размышления" aria-pressed={settings.ultraEffort} title="Ультра-размышления · длительное исследование и написание документов" disabled={!!busy} onClick={() => persistSettings({ ...settings, ultraEffort: !settings.ultraEffort })}><Brain size={18} /></button>
-                <button type="button" className="icon-button" aria-label="Прикрепить изображения" title="Прикрепить изображения · PNG, JPEG, WebP, GIF · до 10 МБ" disabled={!!busy || uploading} onClick={() => fileInput.current?.click()}><Paperclip size={18} /></button>
+                <button type="button" className="icon-button" aria-label="Прикрепить изображения" title="Прикрепить изображения · PNG, JPEG, WebP, GIF" disabled={!!busy || uploading} onClick={() => fileInput.current?.click()}><Paperclip size={18} /></button>
                 <button type="button" className={`icon-button ${settings.webEnabled ? 'tool-enabled' : ''}`} aria-label="Интернет" aria-pressed={settings.webEnabled} title={settings.searchKey ? 'Поиск и чтение сайтов' : 'Чтение сайтов · поиск настраивается в настройках'} disabled={!!busy} onClick={() => persistSettings({ ...settings, webEnabled: !settings.webEnabled })}><Globe size={18} /></button>
                 <button type="button" className={`icon-button ${settings.pythonEnabled ? 'tool-enabled' : ''}`} aria-label="Python" aria-pressed={settings.pythonEnabled} title="Расчёты и графики на Python" disabled={!!busy} onClick={() => persistSettings({ ...settings, pythonEnabled: !settings.pythonEnabled })}><Code2 size={18} /></button>
                 <button type="button" className={`icon-button ${imageMode ? 'tool-enabled image-active' : ''}`} aria-label="Создать изображение" aria-pressed={imageMode} title={imageModel ? `Создать изображение · ${imageModel}` : 'Настроить модель изображений'} disabled={!!busy} onClick={() => { if (imageModel) setImageMode(!imageMode); else { setSettingsOpen(true); setToast('Укажите GPT Image модель в разделе «Инструменты».'); } }}><ImagePlus size={18} /></button>

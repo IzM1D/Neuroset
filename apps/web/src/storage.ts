@@ -3,10 +3,10 @@ import { createChat, defaultSettings, type Chat, type Settings } from './types';
 const prefix = 'neuroset.web.v1.';
 
 function validAttachments(value: unknown): boolean {
-  return value === undefined || (Array.isArray(value) && value.length <= 4 && value.every(image =>
+  return value === undefined || (Array.isArray(value) && value.every(image =>
     image && typeof image.id === 'string' && typeof image.name === 'string' &&
     ['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(image.mediaType) &&
-    Number.isFinite(image.sizeBytes) && image.sizeBytes > 0 && image.sizeBytes <= 10 * 1024 * 1024));
+    Number.isFinite(image.sizeBytes) && image.sizeBytes > 0));
 }
 
 export function loadSettings(): Settings {

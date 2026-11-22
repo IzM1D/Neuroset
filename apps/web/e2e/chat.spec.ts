@@ -244,18 +244,34 @@ test('paste and drop attach images, drafts stay in their chat, and mobile contro
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test('attachment validation rejects unsupported, damaged, oversized files and excess images', async ({ page }) => {
+test('attachment validation rejects unsupported and damaged files', async ({ page }) => {
   await configure(page);
   const picker = page.getByLabel('Загрузить изображения');
   await picker.setInputFiles({ name: 'unsafe.svg', mimeType: 'image/svg+xml', buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>') });
   await expect(page.getByRole('status')).toContainText('поддерживаются PNG, JPEG, WebP и GIF');
-  await picker.setInputFiles({ name: 'large.png', mimeType: 'image/png', buffer: Buffer.alloc(10 * 1024 * 1024 + 1) });
-  await expect(page.getByRole('status')).toContainText('превышает 10 МБ');
   await picker.setInputFiles({ name: 'broken.png', mimeType: 'image/png', buffer: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]) });
   await expect(page.getByRole('status')).toContainText('Не удалось прочитать изображение');
   await expect(page.getByRole('button', { name: 'Отправить сообщение' })).toBeDisabled();
-  await picker.setInputFiles([1, 2, 3, 4, 5].map(index => imageFile(`${index}.png`)));
-  await expect(page.locator('.composer .attachments img')).toHaveCount(4);
-  await expect(page.getByRole('status')).toContainText('не больше 4 изображений');
-  await expect.poll(() => storedImageCount(page)).toBe(4);
+});
+
+test('large image batches survive reload and surface the provider rejection', async ({ page }) => {
+  await configure(page);
+  const files = [1, 2, 3, 4, 5].map(index => imageFile(`${index}.png`));
+  for (const file of files.slice(0, 2)) file.buffer = Buffer.concat([file.buffer, Buffer.alloc(10 * 1024 * 1024)]);
+  await page.getByLabel('Загрузить изображения').setInputFiles(files);
+  await expect(page.locator('.composer .attachments img')).toHaveCount(5);
+  await page.reload();
+  await expect(page.locator('.composer .attachments img')).toHaveCount(5);
+  const reason = 'Image batch exceeds the model input limit.';
+  await page.route('https://api.example.test/v1/chat/completions', route => {
+    const content = route.request().postDataJSON().messages.find((message: { role: string }) => message.role === 'user').content;
+    expect(content.map((part: { image_url: { url: string } }) => part.image_url.url.length))
+      .toEqual(files.map(file => 'data:image/png;base64,'.length + 4 * Math.ceil(file.buffer.length / 3)));
+    return route.fulfill({ status: 413, contentType: 'text/plain', body: reason });
+  });
+  await page.getByRole('button', { name: 'Отправить сообщение' }).click();
+  await expect(page.locator('.message-assistant')).toContainText(`HTTP 413: ${reason}`);
+  await page.reload();
+  await expect(page.locator('.message-user img')).toHaveCount(5);
+  await expect(page.locator('.message-assistant')).toContainText(reason);
 });

@@ -29,14 +29,18 @@ export class ProviderRequestError extends Error {
 
 export async function checkResponse(response: Response) {
   if (response.ok) return;
-  const text = await response.text();
-  let detail = '';
-  try { detail = providerError(JSON.parse(text)) || ''; } catch { /* An HTML error page is not useful in chat. */ }
+  const text = (await response.text()).trim();
+  let detail = text;
+  try {
+    const data = JSON.parse(text);
+    detail = [data?.error?.message, data?.error, data?.message, data?.detail, data]
+      .find(value => typeof value === 'string' && value.trim()) ?? text;
+  } catch { /* Providers can return a plain-text error body. */ }
   const hints: Record<number, string> = {
     401: 'Проверьте API-ключ в настройках.', 403: 'Нет доступа к API или выбранной модели.',
     404: 'Проверьте адрес API и название модели.', 429: 'Лимит запросов или баланс исчерпан. Попробуйте позже.',
   };
-  throw new ProviderRequestError(response.status, `HTTP ${response.status}: ${detail || hints[response.status] || 'Сервер не смог обработать запрос.'}`);
+  throw new ProviderRequestError(response.status, `HTTP ${response.status}: ${detail || hints[response.status] || response.statusText || 'Сервер не смог обработать запрос.'}`);
 }
 
 export async function discoverModels(settings: Settings, signal: AbortSignal): Promise<string[]> {

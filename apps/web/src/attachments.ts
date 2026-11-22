@@ -2,22 +2,14 @@ import { loadImage, storeImage } from './assets';
 import type { Chat, ImageAttachment } from './types';
 
 export const imageAccept = 'image/png,image/jpeg,image/webp,image/gif';
-export const maxAttachments = 4;
-const maxFileBytes = 10 * 1024 * 1024;
-const maxTotalBytes = 20 * 1024 * 1024;
 
 export function chatImageIds(chat: Chat): string[] {
   return [...(chat.draftAttachments || []).map(image => image.id), ...chat.messages.flatMap(message =>
     [...(message.images || []), ...(message.attachments || [])].map(image => image.id))];
 }
 
-export async function importAttachment(file: File, existing: ImageAttachment[]): Promise<ImageAttachment> {
-  if (existing.length >= maxAttachments) throw new Error(`Можно прикрепить не больше ${maxAttachments} изображений к сообщению.`);
+export async function importAttachment(file: File): Promise<ImageAttachment> {
   if (!file.size) throw new Error(`Файл «${file.name}» пустой.`);
-  if (file.size > maxFileBytes) throw new Error(`Файл «${file.name}» превышает 10 МБ.`);
-  if (existing.reduce((total, image) => total + image.sizeBytes, file.size) > maxTotalBytes) {
-    throw new Error('Общий размер изображений в сообщении не должен превышать 20 МБ.');
-  }
   const bytes = new Uint8Array(await file.slice(0, 12).arrayBuffer());
   const starts = (...signature: number[]) => signature.every((byte, index) => bytes[index] === byte);
   const mediaType = starts(137, 80, 78, 71, 13, 10, 26, 10) ? 'image/png'
