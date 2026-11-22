@@ -1,7 +1,10 @@
 import { useRef, useState, type ComponentPropsWithoutRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math-extended';
 import rehypeHighlight from 'rehype-highlight';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import { Check, Copy, Pencil, RotateCcw } from 'lucide-react';
 import type { Message } from './types';
 import { ImageCard, ToolSteps } from './ToolResults';
@@ -43,7 +46,7 @@ export default function MessageView({ message, busy, generating, status, canRetr
       {!!message.steps?.length && <ToolSteps steps={message.steps} />}
       {!!message.attachments?.length && <AttachmentList attachments={message.attachments} />}
       {message.role === 'user' ? (message.content && <div className="user-bubble">{message.content}</div>) :
-        <div className="markdown"><ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]} components={{
+        <div className="markdown"><ReactMarkdown remarkPlugins={[remarkGfm, [remarkMath, { singleDollarTextMath: false }]]} rehypePlugins={[rehypeKatex, rehypeHighlight]} components={{
           pre: CodeBlock,
           a: ({ children, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer">{children}</a>,
           // External images aren't fetched automatically from model-authored Markdown.

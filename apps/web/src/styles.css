@@ -166,6 +166,7 @@ svg { flex-shrink: 0; }
 .markdown a { color: var(--accent); text-underline-offset: 3px; }
 .markdown ul, .markdown ol { padding-left: 25px; }
 .markdown li { margin: 5px 0; }
+.markdown .katex-display { max-width: 100%; overflow-x: auto; padding-block: .2em; }
 .markdown blockquote { border-left: 3px solid var(--strong-border); margin-left: 0; padding-left: 18px; color: var(--muted); }
 .markdown table { border-collapse: collapse; display: block; overflow-x: auto; max-width: 100%; margin: 18px 0; font-size: 13px; }
 .markdown th, .markdown td { border: 1px solid var(--strong-border); padding: 8px 12px; text-align: left; }

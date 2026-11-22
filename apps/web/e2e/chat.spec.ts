@@ -10,6 +10,35 @@ async function configure(page: Page) {
   await page.getByRole('button', { name: 'Сохранить настройки' }).click();
 }
 
+test('typesets formulas in headings and numbered solutions while preserving code and prices', async ({ page }) => {
+  const answer = [
+    '## Решение',
+    '',
+    '**Ответы для ввода по порядку: 110; 15; 0,14; 4,09.**',
+    '',
+    String.raw`1. **Тангенс угла наклона: \(0{,}14\).** Используем отношение проекций:`,
+    String.raw`   \[`,
+    String.raw`   \tan\alpha=\frac{15}{110}\approx0{,}14.`,
+    String.raw`   \]`,
+    '',
+    'Пример кода: ' + '`\\(x\\)`' + '. Цены: $10 и $20.',
+  ].join('\n');
+  await configure(page);
+  await page.route('https://api.example.test/v1/chat/completions', route =>
+    route.fulfill({ json: { choices: [{ message: { content: answer }, finish_reason: 'stop' }] } }));
+  await page.getByRole('textbox', { name: 'Сообщение', exact: true }).fill('Реши задачу про мост');
+  await page.getByRole('button', { name: 'Отправить сообщение' }).click();
+  const response = page.locator('.message-assistant .markdown');
+  await expect(response.getByRole('heading', { name: 'Решение' })).toBeVisible();
+  await expect(response.locator('strong').first()).toHaveText('Ответы для ввода по порядку: 110; 15; 0,14; 4,09.');
+  await expect(response.locator('li strong .katex-html')).toBeVisible();
+  await expect(response.locator('li .katex-display mfrac')).toHaveCount(1);
+  await expect(response.locator('code')).toHaveText('\\(x\\)');
+  await expect(response).toContainText('Цены: $10 и $20.');
+  await page.reload();
+  await expect(response.locator('li .katex-display .katex-html')).toBeVisible();
+});
+
 test('ultra effort persists and continues a truncated document in the same message', async ({ page }) => {
   await configure(page);
   const toggle = page.getByRole('button', { name: 'Ультра-размышления' });
