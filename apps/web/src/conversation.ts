@@ -1,4 +1,4 @@
-import { friendlyError, ProviderRequestError, requestCompletion } from './api';
+import { friendlyError, ProviderRequestError, requestCompletion, type CompletionObservers } from './api';
 import { availableTools, executeTool, toolLabels } from './tools';
 import { attachmentDataUrl, isPreviewImage } from './attachments';
 import type { ApiContentPart, ApiMessage, ImageArtifact, Message, Settings, ToolDefinition, ToolStep } from './types';
@@ -22,7 +22,7 @@ export async function historyMessages(messages: Message[]): Promise<ApiMessage[]
   return history.flat();
 }
 
-interface Callbacks {
+interface Callbacks extends CompletionObservers {
   onText: (text: string) => void;
   onStep: (step: ToolStep) => void;
   onImages: (images: ImageArtifact[]) => void;
@@ -50,7 +50,7 @@ ${imageModel ? 'The user enabled image generation for THIS turn. Call image_gene
     for (;;) {
       signal.throwIfAborted();
       try {
-        return await requestCompletion(settings, context, signal, onText, allowed, forceTool, reasoningEffort);
+        return await requestCompletion(settings, context, signal, onText, allowed, forceTool, reasoningEffort, callbacks);
       } catch (error) {
         if (!reasoningEffort || !(error instanceof ProviderRequestError) || ![400, 422].includes(error.status) ||
             !/reasoning[_ ]effort|\bxhigh\b/i.test(error.message)) throw error;
@@ -85,7 +85,7 @@ ${imageModel ? 'The user enabled image generation for THIS turn. Call image_gene
     signal.throwIfAborted();
     if (ultra) await compactWorkingContext(partial.slice(-3000));
     const allowed = (ultra || (round < 6 && count < 10)) && failures < 3 && !imageAttempted ? tools : [];
-    callbacks.onStatus?.(partial ? 'Продолжение документа' : 'Модель готовит ответ');
+    callbacks.onStatus?.(partial ? 'Продолжение документа' : 'Запрос к модели');
     if (partial) working.push({ role: 'user', content: 'Continue from the exact end of the unfinished answer without repeating any text. Finish the requested deliverable.' });
     const { finishReason, ...response } = await complete([...messages, ...working], callbacks.onText, allowed, imageModel && round === 0 ? 'image_generation' : undefined);
     const calls = response.tool_calls || [];
@@ -109,6 +109,7 @@ ${imageModel ? 'The user enabled image generation for THIS turn. Call image_gene
       signal.throwIfAborted();
       const name = call.function.name;
       const step: ToolStep = { id: call.id, name, label: toolLabels[name] || name, input: call.function.arguments, status: 'running' };
+      callbacks.onStatus?.(`Выполняется инструмент «${step.label}»`);
       callbacks.onStep(step);
       let output: string;
       try {

@@ -180,9 +180,14 @@ svg { flex-shrink: 0; }
 .code-block pre code { padding: 0; background: transparent; border-radius: 0; font-size: 12px; }
 .scroll-bottom { position: absolute; right: calc(50% - 17px); top: -36px; width: 34px; height: 34px; background: var(--surface); border: 1px solid var(--strong-border); border-radius: 50%; box-shadow: 0 2px 10px #0002; color: var(--text); }
 .thinking { display: flex; align-items: center; gap: 5px; padding: 10px 0; }
-.thinking > span:not(.sr-only) { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: pulse 1.2s ease infinite; }
+.thinking > span { flex: 0 0 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: pulse 1.2s ease infinite; }
 .thinking > span:nth-child(2) { animation-delay: .15s; }
 .thinking > span:nth-child(3) { animation-delay: .3s; }
+.thinking small { color: var(--muted); margin-inline-start: 4px; }
+.thinking-elapsed { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.reasoning { border-inline-start: 2px solid var(--strong-border); padding-inline-start: 12px; margin-bottom: 12px; color: var(--muted); font-size: .875rem; }
+.reasoning > summary { cursor: pointer; }
+.reasoning > div { margin-top: 8px; max-height: min(40vh, 320px); overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
 .interrupted { font-size: 12px; color: var(--muted); }
 .edit-notice { font-size: 11px; color: var(--muted); display: flex; align-items: center; justify-content: space-between; padding: 0 8px 7px; gap: 10px; }
 .storage-error { font-size: 12px; color: var(--error); padding: 8px 25px; }

@@ -94,6 +94,65 @@ test('streaming, context, persistence, editing, retry, Markdown and copy', async
   await page.getByRole('button', { name: 'Скачать чат' }).click();
 });
 
+test('shows API activity and reasoning after a wait beyond the old timeout', async ({ page }) => {
+  await page.clock.install();
+  await page.addInitScript(() => {
+    const fetchOriginal = window.fetch.bind(window);
+    const timeoutOriginal = AbortSignal.timeout.bind(AbortSignal);
+    AbortSignal.timeout = milliseconds => {
+      if (milliseconds === 600_000) throw new Error('Unexpected ten-minute request deadline');
+      return timeoutOriginal(milliseconds);
+    };
+    window.fetch = async (input, init) => {
+      if (input !== 'https://api.example.test/v1/chat/completions') return fetchOriginal(input, init);
+      const stream = new TransformStream<Uint8Array>();
+      const writer = stream.writable.getWriter();
+      return new Promise<Response>(resolve => {
+        Object.assign(window, {
+          replyWith: async (event?: string) => {
+            if (event === undefined) resolve(new Response(stream.readable, { headers: { 'Content-Type': 'text/event-stream' } }));
+            else {
+              await writer.write(new TextEncoder().encode(event));
+              if (event.includes('[DONE]')) await writer.close();
+            }
+          },
+        });
+      });
+    };
+  });
+  const replyWith = (event?: string) => page.evaluate(event =>
+    (window as Window & { replyWith: (event?: string) => Promise<void> }).replyWith(event), event);
+  await configure(page);
+  await page.getByRole('textbox', { name: 'Сообщение', exact: true }).fill('Изучи документ');
+  await page.getByRole('button', { name: 'Отправить сообщение' }).click();
+  await expect(page.getByRole('status')).toContainText('Ожидание первого сигнала от API');
+  await page.clock.fastForward(660_000);
+  await expect(page.locator('.thinking-elapsed')).toContainText(/Прошло 11:[0-5][0-9]/);
+  await expect(page.getByRole('button', { name: 'Остановить ответ' })).toBeEnabled();
+
+  await replyWith();
+  await expect(page.getByRole('status')).toContainText('API открыл ответ');
+  await replyWith('data: {"choices":[{"delta":{"reasoning_content":"Читаю ","reasoning":"дубликат"}}]}\n\ndata: {"choices":[{"delta":{"reasoning":"документ."}}]}\n\n');
+  await expect(page.getByRole('status')).toContainText('Получены фрагменты размышлений');
+  await page.getByText('Размышления от API', { exact: true }).click();
+  await expect(page.locator('.reasoning > div')).toHaveText('Читаю документ.');
+  await expect(page.locator('.markdown')).toBeEmpty();
+  await page.clock.fastForward(45_000);
+  await expect(page.locator('.thinking-elapsed')).toContainText(/С последнего сигнала 0:4[4-9]/);
+  await replyWith(': heartbeat\n\n');
+  await expect(page.locator('.thinking-elapsed')).toContainText('С последнего сигнала 0:00');
+  await expect(page.getByRole('status')).toContainText('Получены фрагменты размышлений');
+
+  await replyWith('data: {"choices":[{"delta":{"content":"Документ обработан."}}]}\n\n');
+  await expect(page.getByRole('status')).toContainText('Получены фрагменты ответа');
+  await expect(page.locator('.markdown')).toHaveText('Документ обработан.');
+  await replyWith('data: [DONE]\n\n');
+  await expect(page.getByRole('button', { name: 'Повторить ответ' })).toBeEnabled();
+  await page.reload();
+  await page.getByText('Размышления от API', { exact: true }).click();
+  await expect(page.locator('.reasoning > div')).toHaveText('Читаю документ.');
+});
+
 test('errors are recoverable, cancellation releases composer, and unsafe HTML is inert', async ({ page }) => {
   let mode = 'error';
   await page.route('https://api.example.test/v1/chat/completions', async route => {

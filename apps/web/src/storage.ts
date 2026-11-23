@@ -43,7 +43,8 @@ export function loadChats(): Chat[] {
         if (!message || typeof message !== 'object') return false;
         const m = message as Record<string, unknown>;
         return typeof m.id === 'string' && ['user', 'assistant'].includes(String(m.role)) && typeof m.content === 'string' &&
-          (m.error === undefined || typeof m.error === 'string') && (m.interrupted === undefined || typeof m.interrupted === 'boolean') && validAttachments(m.attachments);
+          (m.error === undefined || typeof m.error === 'string') && (m.interrupted === undefined || typeof m.interrupted === 'boolean') &&
+          (m.reasoning === undefined || typeof m.reasoning === 'string') && validAttachments(m.attachments);
       }));
     return chats.length ? chats : [createChat()];
   } catch { return [createChat()]; }

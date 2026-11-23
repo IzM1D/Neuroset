@@ -54,7 +54,7 @@ export async function discoverModels(settings: Settings, signal: AbortSignal): P
 }
 
 // Decode lines incrementally: network chunks can split both UTF-8 characters and SSE frames.
-export async function* sseData(body: ReadableStream<Uint8Array>): AsyncGenerator<string> {
+export async function* sseData(body: ReadableStream<Uint8Array>, onData?: () => void): AsyncGenerator<string> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
@@ -62,6 +62,7 @@ export async function* sseData(body: ReadableStream<Uint8Array>): AsyncGenerator
   try {
     while (true) {
       const { value, done } = await reader.read();
+      if (value?.length) onData?.();
       buffer += done ? decoder.decode() : decoder.decode(value, { stream: true });
       let match: RegExpExecArray | null;
       while ((match = /\r\n|\r|\n/.exec(buffer))) {
@@ -85,8 +86,15 @@ export async function* sseData(body: ReadableStream<Uint8Array>): AsyncGenerator
   }
 }
 
+export type CompletionActivity = 'request' | 'headers' | 'data' | 'reasoning' | 'answer' | 'tool-call';
+
+export interface CompletionObservers {
+  onActivity?: (activity: CompletionActivity) => void;
+  onReasoning?: (text: string, first: boolean) => void;
+}
+
 export async function requestCompletion(settings: Settings, messages: ApiMessage[], signal: AbortSignal, onText: (text: string) => void,
-  tools: ToolDefinition[] = [], forceTool?: string, reasoningEffort?: 'xhigh' | 'high') {
+  tools: ToolDefinition[] = [], forceTool?: string, reasoningEffort?: 'xhigh' | 'high', observers?: CompletionObservers) {
   const body = {
     model: settings.model.trim(),
     messages,
@@ -96,16 +104,20 @@ export async function requestCompletion(settings: Settings, messages: ApiMessage
     ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
     ...(!settings.ultraEffort && settings.maxTokens !== '' ? { max_tokens: Number(settings.maxTokens) } : {}),
   };
+  observers?.onActivity?.('request');
   const response = await fetch(endpoint(settings.baseUrl), {
     method: 'POST', headers: headers(settings.apiKey), body: JSON.stringify(body), signal,
   });
   await checkResponse(response);
+  observers?.onActivity?.('headers');
   let receivedText = false;
+  let receivedReasoning = false;
   let content = '';
   let finishReason: string | undefined;
   const calls = new Map<number, ToolCall>();
   const acceptCalls = (items: unknown, streaming: boolean) => {
     if (!Array.isArray(items)) return;
+    if (items.length) observers?.onActivity?.('tool-call');
     for (const [position, item] of items.entries()) {
       const index = streaming ? item.index : position;
       if (!Number.isInteger(index) || index < 0 || index > 15) throw new Error('API вернул некорректный вызов инструмента.');
@@ -118,18 +130,31 @@ export async function requestCompletion(settings: Settings, messages: ApiMessage
     }
   };
   const accept = (text: unknown) => {
-    if (typeof text === 'string' && text) { receivedText = true; content += text; onText(text); }
+    if (typeof text === 'string' && text) {
+      receivedText = true;
+      content += text;
+      observers?.onActivity?.('answer');
+      onText(text);
+    }
+  };
+  const acceptReasoning = (primary: unknown, alternative: unknown) => {
+    const text = typeof primary === 'string' && primary ? primary : alternative;
+    if (typeof text !== 'string' || !text) return;
+    observers?.onReasoning?.(text, !receivedReasoning);
+    receivedReasoning = true;
+    observers?.onActivity?.('reasoning');
   };
   if (response.headers.get('content-type')?.includes('text/event-stream')) {
     if (!response.body) throw new Error('Браузер не смог прочитать поток ответа.');
     let finished = false;
-    for await (const event of sseData(response.body)) {
+    for await (const event of sseData(response.body, () => observers?.onActivity?.('data'))) {
       if (event.trim() === '[DONE]') { finished = true; break; }
       let data;
       try { data = JSON.parse(event); } catch { throw new Error('API вернул некорректный поток ответа.'); }
       const error = providerError(data);
       if (error) throw new Error(error);
       const choice = data.choices?.[0];
+      acceptReasoning(choice?.delta?.reasoning_content, choice?.delta?.reasoning);
       accept(choice?.delta?.content);
       accept(choice?.delta?.refusal);
       acceptCalls(choice?.delta?.tool_calls, true);
@@ -138,13 +163,17 @@ export async function requestCompletion(settings: Settings, messages: ApiMessage
     if (!finished) throw new Error('Поток ответа прервался. Попробуйте повторить запрос.');
   } else {
     const data = await response.json();
+    observers?.onActivity?.('data');
     const error = providerError(data);
     if (error) throw new Error(error);
-    accept(data.choices?.[0]?.message?.content);
-    accept(data.choices?.[0]?.message?.refusal);
-    acceptCalls(data.choices?.[0]?.message?.tool_calls, false);
-    finishReason = data.choices?.[0]?.finish_reason;
+    const choice = data.choices?.[0];
+    acceptReasoning(choice?.message?.reasoning_content, choice?.message?.reasoning);
+    accept(choice?.message?.content);
+    accept(choice?.message?.refusal);
+    acceptCalls(choice?.message?.tool_calls, false);
+    finishReason = choice?.finish_reason;
   }
+  if (!receivedText && !calls.size && receivedReasoning) throw new Error('API завершил генерацию без итогового ответа.');
   if (!receivedText && !calls.size) throw new Error('Модель вернула пустой ответ. Проверьте модель и параметры генерации.');
   const toolCalls = [...calls.entries()].sort(([a], [b]) => a - b).map(([, call]) => call);
   if (toolCalls.length && finishReason === 'length') throw new Error('API обрезал вызов инструмента по длине. Действие не выполнено.');

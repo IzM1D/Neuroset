@@ -6,7 +6,7 @@ import { isImageModel, selectImageModel } from './images';
 import { removeImages } from './assets';
 import { chatImageIds, importAttachment } from './attachments';
 import AttachmentList from './AttachmentList';
-import MessageView from './MessageView';
+import MessageView, { type RunProgress } from './MessageView';
 import SettingsDialog from './SettingsDialog';
 import { loadChats, loadSettings, saveChats, saveSettings } from './storage';
 import { createChat, type Chat, type FileAttachment, type Message, type Settings } from './types';
@@ -26,7 +26,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState<{ chatId: string; messageId: string } | null>(null);
-  const [runStatus, setRunStatus] = useState('');
+  const [runProgress, setRunProgress] = useState<RunProgress | null>(null);
   const [toast, setToast] = useState('');
   const [storageError, setStorageError] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -182,22 +182,41 @@ export default function App() {
     void removeImages(chatImageIds(activeChat).filter(id => !retained.has(id))).catch(() => {});
     controller.current = abort;
     setBusy({ chatId, messageId: response.id });
-    setRunStatus('');
+    setRunProgress({ status: 'Подготовка запроса', startedAt: Date.now() });
     follow.current = true;
     updateChat(chatId, chat => ({ ...chat, messages: [...history, response], draft: '', draftAttachments: [], updatedAt: Date.now(),
       title: chat.messages.length === 0 ? (history[0]?.content.slice(0, 55) || history[0]?.attachments?.[0]?.name.slice(0, 55) || 'Новый чат') : chat.title }));
     let content = '';
+    let reasoning = '';
     let pendingFrame = 0;
     const updateResponse = (patch: Partial<Message>) => updateChat(chatId, chat => ({ ...chat,
       messages: chat.messages.map(message => message.id === response.id ? { ...message, ...patch } : message),
     }));
+    const flushResponse = () => updateResponse({ content, reasoning: reasoning || undefined });
+    const scheduleResponse = () => {
+      if (!pendingFrame) pendingFrame = requestAnimationFrame(() => { pendingFrame = 0; flushResponse(); });
+    };
     try {
-      const signal = settings.ultraEffort ? abort.signal : AbortSignal.any([abort.signal, AbortSignal.timeout(600_000)]);
-      await runConversation(settings, history, signal, {
-        onStatus: settings.ultraEffort ? setRunStatus : undefined,
+      await runConversation(settings, history, abort.signal, {
+        onStatus: status => setRunProgress({ status, startedAt: Date.now() }),
+        onActivity: activity => {
+          const now = Date.now();
+          setRunProgress(previous => {
+            if (!previous) return previous;
+            if (activity === 'request') return { status: previous.status, startedAt: now, activity };
+            const lastStage = previous.activity;
+            const stage = activity === 'data' && lastStage && lastStage !== 'request' && lastStage !== 'headers'
+              ? lastStage : activity;
+            return { ...previous, activity: stage, lastSignalAt: now };
+          });
+        },
+        onReasoning: (text, first) => {
+          reasoning += (first && reasoning ? '\n\n' : '') + text;
+          scheduleResponse();
+        },
         onText: text => {
           content += text;
-          if (!pendingFrame) pendingFrame = requestAnimationFrame(() => { pendingFrame = 0; updateResponse({ content }); });
+          scheduleResponse();
         },
         onStep: step => updateChat(chatId, chat => ({ ...chat, messages: chat.messages.map(message => {
           if (message.id !== response.id) return message;
@@ -207,11 +226,9 @@ export default function App() {
         onImages: images => updateChat(chatId, chat => ({ ...chat, messages: chat.messages.map(message => message.id === response.id ? { ...message, images: [...(message.images || []), ...images] } : message) })),
         onProtocol: protocol => updateResponse({ protocol }),
       }, requestedImage);
-      updateResponse({ content });
+      flushResponse();
     } catch (cause) {
-      updateResponse({ content, ...(abort.signal.aborted ? { interrupted: true } : {
-        error: !settings.ultraEffort && cause instanceof DOMException && cause.name === 'TimeoutError' ? 'Время ожидания истекло (10 минут). Полученные результаты сохранены.' : friendlyError(cause),
-      }) });
+      updateResponse({ content, reasoning: reasoning || undefined, ...(abort.signal.aborted ? { interrupted: true } : { error: friendlyError(cause) }) });
     } finally {
       cancelAnimationFrame(pendingFrame);
       updateChat(chatId, chat => ({ ...chat, messages: chat.messages.map(message => message.id === response.id ? {
@@ -219,6 +236,7 @@ export default function App() {
       } : message) }));
       controller.current = null;
       setBusy(null);
+      setRunProgress(null);
       textarea.current?.focus();
     }
   }
@@ -313,7 +331,7 @@ export default function App() {
           follow.current = element.scrollHeight - element.scrollTop - element.clientHeight < 90;
           setShowScroll(!follow.current);
         }}><div className="messages">
-          {activeChat.messages.map((message, index) => <MessageView key={message.id} message={message} busy={!!busy || uploading} generating={busy?.messageId === message.id} status={runStatus} canRetry={message.role === 'assistant' && index === activeChat.messages.length - 1} onRetry={() => retry(index)} onEdit={() => {
+          {activeChat.messages.map((message, index) => <MessageView key={message.id} message={message} busy={!!busy || uploading} progress={busy?.messageId === message.id ? runProgress : null} canRetry={message.role === 'assistant' && index === activeChat.messages.length - 1} onRetry={() => retry(index)} onEdit={() => {
             setEditingId(message.id);
             replaceDraftAttachments(message.attachments || []);
             updateChat(activeChat.id, chat => ({ ...chat, draft: message.content }));
